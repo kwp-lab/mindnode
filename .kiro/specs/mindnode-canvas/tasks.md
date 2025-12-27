@@ -14,14 +14,14 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
   - Configure testing framework (Jest + React Testing Library)
   - _Requirements: 13.1, 13.2_
 
-- [-] 2. Database Schema and Models
-  - [ ] 2.1 Create Supabase database schema
+- [x] 2. Database Schema and Models
+  - [x] 2.1 Create Supabase database schema
     - Create workspaces table with RLS policies
     - Create nodes table with indexes
     - Set up foreign key relationships and cascade deletes
     - _Requirements: 7.1, 7.4, 10.1, 12.3_
 
-  - [ ] 2.2 Implement TypeScript data models
+  - [x] 2.2 Implement TypeScript data models
     - Define Workspace, MindNode, and Edge interfaces
     - Create type guards and validation functions
     - _Requirements: 2.1, 2.2, 3.1_
