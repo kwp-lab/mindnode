@@ -30,8 +30,8 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 7: Cascade Deletion Completeness**
     - **Validates: Requirements 2.6**
 
-- [ ] 3. Context Assembly Engine
-  - [ ] 3.1 Implement path traversal algorithm
+- [x] 3. Context Assembly Engine
+  - [x] 3.1 Implement path traversal algorithm
     - Write assembleContext function to traverse from node to root
     - Handle edge cases (orphaned nodes, circular references)
     - _Requirements: 3.2, 5.1_
@@ -40,7 +40,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 8: Context Path Ordering**
     - **Validates: Requirements 3.2, 5.1**
 
-  - [ ] 3.3 Implement prompt construction logic
+  - [x] 3.3 Implement prompt construction logic
     - Write buildAIPrompt function with context path and selection source
     - Handle token limit truncation strategy
     - _Requirements: 4.4, 5.2_
