@@ -53,23 +53,23 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 10: Sibling Branch Exclusion**
     - **Validates: Requirements 5.3**
 
-- [ ] 4. State Management with Zustand
-  - [ ] 4.1 Create canvas slice (nodes, edges, viewport)
+- [x] 4. State Management with Zustand
+  - [x] 4.1 Create canvas slice (nodes, edges, viewport)
     - Implement addNode, updateNode, deleteNode actions
     - Implement viewport management (pan, zoom)
     - _Requirements: 1.1, 1.2, 2.1, 2.2_
 
-  - [ ] 4.2 Create AI slice (generation state)
+  - [x] 4.2 Create AI slice (generation state)
     - Implement startGeneration, stopGeneration actions
     - Track generating nodes
     - _Requirements: 3.1, 3.3_
 
-  - [ ] 4.3 Create selection slice (text selection state)
+  - [x] 4.3 Create selection slice (text selection state)
     - Implement setSelection, clearSelection actions
     - Store selected text and position
     - _Requirements: 4.1, 4.5_
 
-  - [ ] 4.4 Create workspace slice
+  - [x] 4.4 Create workspace slice
     - Implement workspace switching logic
     - Handle workspace CRUD operations
     - _Requirements: 7.1, 7.2_
@@ -78,7 +78,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 12: Node Modification Persistence**
     - **Validates: Requirements 7.3, 10.2**
 
-- [ ] 5. Checkpoint - Core Logic Complete
+- [-] 5. Checkpoint - Core Logic Complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Layout Engine with Dagre
