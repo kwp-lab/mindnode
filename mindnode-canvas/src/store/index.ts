@@ -7,6 +7,11 @@ import {
   deriveEdgesFromNodes,
   createEdgeFromNodes,
 } from '../types';
+import {
+  getLayoutedElements,
+  layoutDescendants,
+  LayoutDirection,
+} from '../lib/layout';
 
 // ============================================
 // STORE TYPES
@@ -38,7 +43,7 @@ export interface CanvasSlice {
   // Actions
   addNode: (node: MindNode) => void;
   updateNode: (id: string, data: Partial<MindNode['data']>) => void;
-  updateNodePosition: (id: string, position: { x: number; y: number }) => void;
+  updateNodePosition: (id: string, position: { x: number; y: number }, isManual?: boolean) => void;
   deleteNode: (id: string) => void;
   setNodes: (nodes: MindNode[]) => void;
   setEdges: (edges: Edge[]) => void;
@@ -94,10 +99,28 @@ export interface WorkspaceSlice {
 }
 
 // ============================================
+// LAYOUT SLICE
+// ============================================
+
+export interface LayoutSlice {
+  // State
+  manuallyPositionedNodes: Set<string>;
+  layoutDirection: LayoutDirection;
+
+  // Actions
+  markNodeAsManuallyPositioned: (nodeId: string) => void;
+  clearManuallyPositioned: (nodeId: string) => void;
+  clearAllManuallyPositioned: () => void;
+  setLayoutDirection: (direction: LayoutDirection) => void;
+  applyLayout: () => void;
+  applyLayoutToDescendants: (nodeId: string) => void;
+}
+
+// ============================================
 // COMBINED STORE TYPE
 // ============================================
 
-export type MindNodeStore = CanvasSlice & AISlice & SelectionSlice & WorkspaceSlice;
+export type MindNodeStore = CanvasSlice & AISlice & SelectionSlice & WorkspaceSlice & LayoutSlice;
 
 // ============================================
 // DEFAULT VALUES
@@ -162,13 +185,19 @@ export const useMindNodeStore = create<MindNodeStore>()(
     /**
      * Update node position on canvas
      * Requirements: 1.1 - Canvas pan/drag
+     * Requirements: 8.3 - Track manually positioned nodes
      */
-    updateNodePosition: (id: string, position: { x: number; y: number }) => {
+    updateNodePosition: (id: string, position: { x: number; y: number }, isManual: boolean = false) => {
       set((state) => {
         const nodeIndex = state.nodes.findIndex((n) => n.id === id);
         if (nodeIndex !== -1) {
           state.nodes[nodeIndex].position = position;
           state.nodes[nodeIndex].updatedAt = new Date();
+          
+          // Mark as manually positioned if this was a user drag action
+          if (isManual) {
+            state.manuallyPositionedNodes = new Set([...state.manuallyPositionedNodes, id]);
+          }
         }
       });
     },
@@ -410,6 +439,90 @@ export const useMindNodeStore = create<MindNodeStore>()(
         }
       });
     },
+
+    // ========================================
+    // LAYOUT SLICE STATE
+    // ========================================
+    manuallyPositionedNodes: new Set<string>(),
+    layoutDirection: 'LR' as LayoutDirection,
+
+    // ========================================
+    // LAYOUT SLICE ACTIONS
+    // ========================================
+
+    /**
+     * Mark a node as manually positioned
+     * Requirements: 8.3 - Track manually positioned nodes
+     */
+    markNodeAsManuallyPositioned: (nodeId: string) => {
+      set((state) => {
+        state.manuallyPositionedNodes = new Set([...state.manuallyPositionedNodes, nodeId]);
+      });
+    },
+
+    /**
+     * Clear manual position flag for a node
+     */
+    clearManuallyPositioned: (nodeId: string) => {
+      set((state) => {
+        const newSet = new Set(state.manuallyPositionedNodes);
+        newSet.delete(nodeId);
+        state.manuallyPositionedNodes = newSet;
+      });
+    },
+
+    /**
+     * Clear all manual position flags (for full re-layout)
+     */
+    clearAllManuallyPositioned: () => {
+      set((state) => {
+        state.manuallyPositionedNodes = new Set<string>();
+      });
+    },
+
+    /**
+     * Set layout direction
+     * Requirements: 8.1 - Configure layout direction
+     */
+    setLayoutDirection: (direction: LayoutDirection) => {
+      set((state) => {
+        state.layoutDirection = direction;
+      });
+    },
+
+    /**
+     * Apply automatic layout to all nodes
+     * Requirements: 8.1 - Use tree layout algorithm to position nodes
+     */
+    applyLayout: () => {
+      set((state) => {
+        const { nodes: layoutedNodes } = getLayoutedElements(
+          state.nodes,
+          state.edges,
+          {
+            direction: state.layoutDirection,
+            manuallyPositionedNodes: state.manuallyPositionedNodes,
+          }
+        );
+        state.nodes = layoutedNodes;
+      });
+    },
+
+    /**
+     * Apply layout only to descendants of a specific node
+     * Requirements: 8.3 - Adjust only descendants during re-layout
+     */
+    applyLayoutToDescendants: (nodeId: string) => {
+      set((state) => {
+        const { nodes: layoutedNodes } = layoutDescendants(
+          nodeId,
+          state.nodes,
+          state.edges,
+          { direction: state.layoutDirection }
+        );
+        state.nodes = layoutedNodes;
+      });
+    },
   }))
 );
 
@@ -474,3 +587,21 @@ export const useNodeChildren = (parentId: string) =>
  */
 export const useIsAnyGenerating = () =>
   useMindNodeStore((state) => state.generatingNodes.size > 0);
+
+/**
+ * Select layout direction
+ */
+export const useLayoutDirection = () =>
+  useMindNodeStore((state) => state.layoutDirection);
+
+/**
+ * Select manually positioned nodes
+ */
+export const useManuallyPositionedNodes = () =>
+  useMindNodeStore((state) => state.manuallyPositionedNodes);
+
+/**
+ * Check if a node is manually positioned
+ */
+export const useIsNodeManuallyPositioned = (nodeId: string) =>
+  useMindNodeStore((state) => state.manuallyPositionedNodes.has(nodeId));

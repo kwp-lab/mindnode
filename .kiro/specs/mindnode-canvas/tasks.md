@@ -78,11 +78,11 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 12: Node Modification Persistence**
     - **Validates: Requirements 7.3, 10.2**
 
-- [-] 5. Checkpoint - Core Logic Complete
+- [x] 5. Checkpoint - Core Logic Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Layout Engine with Dagre
-  - [ ] 6.1 Implement automatic layout algorithm
+- [x] 6. Layout Engine with Dagre
+  - [x] 6.1 Implement automatic layout algorithm
     - Integrate Dagre for tree layout
     - Configure node spacing and direction (LR)
     - _Requirements: 8.1_
@@ -91,7 +91,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 5: Layout Non-Overlap Invariant**
     - **Validates: Requirements 2.3, 8.2**
 
-  - [ ] 6.3 Implement manual position preservation
+  - [x] 6.3 Implement manual position preservation
     - Track manually positioned nodes
     - Adjust only descendants during re-layout
     - _Requirements: 8.3_
