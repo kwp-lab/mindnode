@@ -6,7 +6,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
 
 ## Tasks
 
-- [-] 1. Project Setup and Core Infrastructure
+- [x] 1. Project Setup and Core Infrastructure
   - Initialize Next.js 14+ project with App Router
   - Configure TypeScript, Tailwind CSS, and ESLint
   - Set up Supabase client and environment variables
@@ -14,7 +14,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
   - Configure testing framework (Jest + React Testing Library)
   - _Requirements: 13.1, 13.2_
 
-- [ ] 2. Database Schema and Models
+- [-] 2. Database Schema and Models
   - [ ] 2.1 Create Supabase database schema
     - Create workspaces table with RLS policies
     - Create nodes table with indexes
