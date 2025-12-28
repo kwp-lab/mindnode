@@ -197,7 +197,6 @@ export async function POST(req: Request) {
       model: openai(DEFAULT_MODEL),
       prompt,
       temperature: 0.8,
-      maxTokens: 100,
     });
 
     // Process and validate suggestions

@@ -1,21 +1,32 @@
 'use client';
 
 /**
- * Main page component that renders the MindNode Canvas
+ * Main page component that renders the MindNode Canvas with workspace management
+ * 
+ * Implements:
+ * - Task 14.3: Workspace switching logic integration
+ * 
+ * Requirements:
+ * - 7.2: Load workspace node tree and canvas state when switching
+ * - 7.5: Display list of all user workspaces
  */
 
-import { useEffect, useState } from 'react';
-import { CanvasWorkspace } from '../components';
+import { useEffect, useState, useCallback } from 'react';
+import { CanvasWorkspace, WorkspaceSidebar } from '../components';
 import { MindNode } from '../types';
 import { useMindNodeStore } from '../store';
+import { useWorkspaces } from '../hooks';
 
-// Demo workspace ID for development
+// Demo user ID for development (in production, this would come from auth)
+const DEMO_USER_ID = 'demo-user-id';
+
+// Demo workspace ID for development fallback
 const DEMO_WORKSPACE_ID = 'demo-workspace';
 
 // Initial demo node for testing
-const createInitialNode = (): MindNode => ({
+const createInitialNode = (workspaceId: string): MindNode => ({
   id: 'root-node',
-  workspaceId: DEMO_WORKSPACE_ID,
+  workspaceId,
   parentId: null,
   type: 'root',
   data: {
@@ -29,17 +40,59 @@ const createInitialNode = (): MindNode => ({
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
   const { nodes, setNodes, setCurrentWorkspace } = useMindNodeStore();
+  
+  // Use workspace management hook
+  const {
+    workspaces,
+    currentWorkspaceId,
+    isLoading,
+    isSwitching,
+    error,
+    switchWorkspace,
+    createWorkspace,
+    deleteWorkspace,
+  } = useWorkspaces({
+    userId: DEMO_USER_ID,
+    autoLoad: true,
+  });
 
   // Ensure we're on the client side before rendering React Flow
   useEffect(() => {
     setIsClient(true);
-    setCurrentWorkspace(DEMO_WORKSPACE_ID);
-    
-    // Initialize with a root node if no nodes exist
-    if (nodes.length === 0) {
-      setNodes([createInitialNode()]);
+  }, []);
+
+  // Initialize with demo workspace if no workspaces exist and not loading
+  useEffect(() => {
+    if (isClient && !isLoading && workspaces.length === 0 && !currentWorkspaceId) {
+      // Fall back to demo mode
+      setCurrentWorkspace(DEMO_WORKSPACE_ID);
+      if (nodes.length === 0) {
+        setNodes([createInitialNode(DEMO_WORKSPACE_ID)]);
+      }
     }
+  }, [isClient, isLoading, workspaces.length, currentWorkspaceId, nodes.length, setCurrentWorkspace, setNodes]);
+
+  // Handle workspace selection
+  const handleWorkspaceSelect = useCallback((workspaceId: string) => {
+    switchWorkspace(workspaceId);
+  }, [switchWorkspace]);
+
+  // Handle workspace creation
+  const handleWorkspaceCreate = useCallback((title: string) => {
+    createWorkspace(title);
+  }, [createWorkspace]);
+
+  // Handle workspace deletion
+  const handleWorkspaceDelete = useCallback((workspaceId: string) => {
+    deleteWorkspace(workspaceId);
+  }, [deleteWorkspace]);
+
+  // Toggle sidebar
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
   }, []);
 
   if (!isClient) {
@@ -52,10 +105,68 @@ export default function Home() {
   }
 
   return (
-    <main className="w-screen h-screen overflow-hidden">
-      <CanvasWorkspace 
-        workspaceId={DEMO_WORKSPACE_ID}
-      />
+    <main className="w-screen h-screen overflow-hidden flex">
+      {/* Sidebar toggle button (visible when collapsed) */}
+      {sidebarCollapsed && (
+        <button
+          onClick={toggleSidebar}
+          className="absolute left-0 top-4 z-50 p-2 bg-white border border-gray-200 rounded-r-lg shadow-md hover:bg-gray-50 transition-colors"
+          title="Show workspaces"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Workspace Sidebar */}
+      {!sidebarCollapsed && (
+        <div className="relative w-64 flex-shrink-0">
+          <WorkspaceSidebar
+            workspaces={workspaces}
+            currentWorkspaceId={currentWorkspaceId}
+            isLoading={isLoading}
+            onWorkspaceSelect={handleWorkspaceSelect}
+            onWorkspaceCreate={handleWorkspaceCreate}
+            onWorkspaceDelete={handleWorkspaceDelete}
+          />
+          {/* Collapse button */}
+          <button
+            onClick={toggleSidebar}
+            className="absolute right-0 top-4 translate-x-1/2 z-10 p-1.5 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-50 transition-colors"
+            title="Hide workspaces"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Main Canvas Area */}
+      <div className="flex-1 relative">
+        {/* Loading overlay when switching workspaces */}
+        {isSwitching && (
+          <div className="absolute inset-0 z-40 bg-white/80 flex items-center justify-center">
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 border-3 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-3" />
+              <span className="text-sm text-gray-600">Loading workspace...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error display */}
+        {error && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm shadow-md">
+            {error}
+          </div>
+        )}
+
+        {/* Canvas */}
+        <CanvasWorkspace 
+          workspaceId={currentWorkspaceId || DEMO_WORKSPACE_ID}
+        />
+      </div>
     </main>
   );
 }
