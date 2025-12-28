@@ -305,25 +305,25 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - Support exporting individual branches
     - _Requirements: 11.4, 11.5_
 
-  - [ ]* 16.4 Write unit tests for export UI
+  - [x] 16.4 Write unit tests for export UI
     - Test export button triggers download
     - Test branch export functionality
     - _Requirements: 11.4, 11.5_
 
-- [ ] 17. Authentication with Supabase
-  - [ ] 17.1 Set up Supabase Auth
+- [x] 17. Authentication with Supabase
+  - [x] 17.1 Set up Supabase Auth
     - Configure email/password authentication
     - Set up OAuth providers (Google, GitHub)
     - Implement RLS policies for workspaces and nodes
     - _Requirements: 12.1, 12.2, 12.5_
 
-  - [ ] 17.2 Create authentication pages
+  - [x] 17.2 Create authentication pages
     - Create sign-up page
     - Create login page
     - Create logout functionality
     - _Requirements: 12.1, 12.2, 12.4_
 
-  - [ ] 17.3 Implement protected routes
+  - [x] 17.3 Implement protected routes
     - Redirect unauthenticated users to login
     - Load user session on app initialization
     - _Requirements: 12.3_

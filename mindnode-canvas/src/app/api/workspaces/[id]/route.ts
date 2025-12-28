@@ -8,10 +8,12 @@
  * Requirements:
  * - 7.2: Load workspace node tree and canvas state
  * - 7.4: Delete workspace and all associated nodes
+ * - 12.3: User workspace isolation
  */
 
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { requireAuth, checkWorkspaceOwnership } from '@/lib/auth/server';
 import { Workspace, MindNode, Edge, deriveEdgesFromNodes } from '@/types';
 import { WorkspaceRow, NodeRow } from '@/lib/supabase/database.types';
 
@@ -138,16 +140,30 @@ function validateUpdateRequest(
 /**
  * Get a specific workspace with its nodes and edges
  * Requirements: 7.2 - Load workspace node tree and canvas state
+ * Requirements: 12.3 - User workspace isolation
  */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+    
     const { id } = await params;
-    const supabase = createServerClient();
+    
+    // Check workspace ownership
+    const hasAccess = await checkWorkspaceOwnership(id, user.id);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Workspace not found or access denied' },
+        { status: 404 }
+      );
+    }
+    
+    const supabase = await createServerClient();
 
-    // Fetch workspace
+    // Fetch workspace (RLS ensures user can only access their own workspaces)
     const { data: workspaceData, error: workspaceError } = await supabase
       .from('workspaces')
       .select('*')
@@ -169,7 +185,6 @@ export async function GET(
     }
 
     // Fetch all nodes for this workspace
-    // Requirements: 7.2 - Load workspace node tree
     const { data: nodesData, error: nodesError } = await supabase
       .from('nodes')
       .select('*')
@@ -194,6 +209,13 @@ export async function GET(
       edges,
     } as WorkspaceWithNodesResponse);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     console.error('Workspace GET error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -209,13 +231,27 @@ export async function GET(
 /**
  * Update a workspace (title, viewport state)
  * Requirements: 7.3 - Persist changes to database
+ * Requirements: 12.3 - User workspace isolation
  */
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+    
     const { id } = await params;
+    
+    // Check workspace ownership
+    const hasAccess = await checkWorkspaceOwnership(id, user.id);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Workspace not found or access denied' },
+        { status: 404 }
+      );
+    }
+    
     const body = await req.json();
 
     // Validate request
@@ -228,7 +264,7 @@ export async function PUT(
     }
 
     const { title, viewport } = validation.data;
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     // Build update object
     const updateData: Record<string, unknown> = {
@@ -245,7 +281,7 @@ export async function PUT(
       updateData.viewport_zoom = viewport.zoom;
     }
 
-    // Update workspace
+    // Update workspace (RLS ensures user can only update their own workspaces)
     const { data, error } = await supabase
       .from('workspaces')
       .update(updateData)
@@ -271,6 +307,13 @@ export async function PUT(
 
     return NextResponse.json({ workspace });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     console.error('Workspace PUT error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -286,31 +329,31 @@ export async function PUT(
 /**
  * Delete a workspace and all its associated nodes
  * Requirements: 7.4 - Delete workspace and all associated nodes
+ * Requirements: 12.3 - User workspace isolation
  */
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+    
     const { id } = await params;
-    const supabase = createServerClient();
-
-    // First, check if workspace exists
-    const { data: existingWorkspace, error: checkError } = await supabase
-      .from('workspaces')
-      .select('id')
-      .eq('id', id)
-      .single();
-
-    if (checkError || !existingWorkspace) {
+    
+    // Check workspace ownership
+    const hasAccess = await checkWorkspaceOwnership(id, user.id);
+    if (!hasAccess) {
       return NextResponse.json(
-        { error: 'Workspace not found' },
+        { error: 'Workspace not found or access denied' },
         { status: 404 }
       );
     }
+    
+    const supabase = await createServerClient();
 
     // Delete workspace (cascade will delete all nodes due to foreign key constraint)
-    // Requirements: 7.4 - Remove all associated nodes and edges
+    // RLS ensures user can only delete their own workspaces
     const { error: deleteError } = await supabase
       .from('workspaces')
       .delete()
@@ -329,6 +372,13 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     console.error('Workspace DELETE error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

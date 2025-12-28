@@ -57,8 +57,8 @@ export interface UseWorkspacesReturn {
 /**
  * Fetch all workspaces for a user
  */
-async function fetchWorkspaces(userId: string): Promise<Workspace[]> {
-  const response = await fetch(`/api/workspaces?userId=${encodeURIComponent(userId)}`);
+async function fetchWorkspaces(): Promise<Workspace[]> {
+  const response = await fetch('/api/workspaces');
   
   if (!response.ok) {
     const error = await response.json();
@@ -111,11 +111,11 @@ async function fetchWorkspaceWithNodes(workspaceId: string): Promise<{
 /**
  * Create a new workspace
  */
-async function createWorkspaceApi(title: string, userId: string): Promise<Workspace> {
+async function createWorkspaceApi(title: string): Promise<Workspace> {
   const response = await fetch('/api/workspaces', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, userId }),
+    body: JSON.stringify({ title }),
   });
   
   if (!response.ok) {
@@ -200,7 +200,7 @@ export function useWorkspaces({
     setError(null);
     
     try {
-      const fetchedWorkspaces = await fetchWorkspaces(userId);
+      const fetchedWorkspaces = await fetchWorkspaces();
       setWorkspaces(fetchedWorkspaces);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load workspaces';
@@ -270,7 +270,7 @@ export function useWorkspaces({
     setError(null);
     
     try {
-      const workspace = await createWorkspaceApi(title, userId);
+      const workspace = await createWorkspaceApi(title);
       addWorkspace(workspace);
       
       // Automatically switch to the new workspace

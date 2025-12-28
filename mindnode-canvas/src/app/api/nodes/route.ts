@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     }
 
     const { workspaceId, parentId, type, data, position, id } = validation.data;
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     // Build properly typed insert data
     const insertData = {

@@ -134,7 +134,7 @@ export async function PUT(req: Request) {
     }
 
     const { updates } = validation.data;
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const results: { nodeId: string; success: boolean; error?: string }[] = [];
     const updatedNodes: MindNode[] = [];
 

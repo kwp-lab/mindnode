@@ -6,22 +6,22 @@
  * Implements:
  * - Task 14.3: Workspace switching logic integration
  * - Task 16.3: Export UI integration
+ * - Task 17.3: Load user session on app initialization
  * 
  * Requirements:
  * - 7.2: Load workspace node tree and canvas state when switching
  * - 7.5: Display list of all user workspaces
  * - 11.4: Provide download link for Markdown file
  * - 11.5: Support exporting individual branches
+ * - 12.3: Only display workspaces owned by authenticated user
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { CanvasWorkspace, WorkspaceSidebar, ExportButton } from '../components';
+import { CanvasWorkspace, WorkspaceSidebar, ExportButton, LogoutButton } from '../components';
 import { MindNode } from '../types';
 import { useMindNodeStore } from '../store';
 import { useWorkspaces } from '../hooks';
-
-// Demo user ID for development (in production, this would come from auth)
-const DEMO_USER_ID = 'demo-user-id';
+import { useAuth } from '@/lib/auth/AuthProvider';
 
 // Demo workspace ID for development fallback
 const DEMO_WORKSPACE_ID = 'demo-workspace';
@@ -45,9 +45,10 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { nodes, setNodes, setCurrentWorkspace, selectedNodeId } = useMindNodeStore();
   
-  // Use workspace management hook
+  // Use workspace management hook with actual user ID
   const {
     workspaces,
     currentWorkspaceId,
@@ -58,8 +59,8 @@ export default function Home() {
     createWorkspace,
     deleteWorkspace,
   } = useWorkspaces({
-    userId: DEMO_USER_ID,
-    autoLoad: true,
+    userId: user?.id || '',
+    autoLoad: !!user?.id,
   });
 
   // Ensure we're on the client side before rendering React Flow
@@ -69,14 +70,14 @@ export default function Home() {
 
   // Initialize with demo workspace if no workspaces exist and not loading
   useEffect(() => {
-    if (isClient && !isLoading && workspaces.length === 0 && !currentWorkspaceId) {
+    if (isClient && !isLoading && !isAuthLoading && user && workspaces.length === 0 && !currentWorkspaceId) {
       // Fall back to demo mode
       setCurrentWorkspace(DEMO_WORKSPACE_ID);
       if (nodes.length === 0) {
         setNodes([createInitialNode(DEMO_WORKSPACE_ID)]);
       }
     }
-  }, [isClient, isLoading, workspaces.length, currentWorkspaceId, nodes.length, setCurrentWorkspace, setNodes]);
+  }, [isClient, isLoading, isAuthLoading, user, workspaces.length, currentWorkspaceId, nodes.length, setCurrentWorkspace, setNodes]);
 
   // Handle workspace selection
   const handleWorkspaceSelect = useCallback((workspaceId: string) => {
@@ -98,7 +99,7 @@ export default function Home() {
     setSidebarCollapsed(prev => !prev);
   }, []);
 
-  if (!isClient) {
+  if (!isClient || isAuthLoading) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-24">
         <h1 className="text-4xl font-bold mb-4">MindNode Canvas</h1>
@@ -150,6 +151,18 @@ export default function Home() {
       <div className="flex-1 relative">
         {/* Workspace Toolbar */}
         <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          {/* User info */}
+          {user && (
+            <div className="flex items-center gap-2 bg-white/80 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+              <span className="text-sm text-gray-600">
+                {user.email}
+              </span>
+              <LogoutButton className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                Sign out
+              </LogoutButton>
+            </div>
+          )}
+          
           {/* Current workspace title */}
           {currentWorkspaceId && (
             <span className="text-sm text-gray-600 bg-white/80 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">

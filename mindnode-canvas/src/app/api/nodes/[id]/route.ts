@@ -122,7 +122,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     const { data, error } = await supabase
       .from('nodes')
@@ -181,7 +181,7 @@ export async function PUT(
     }
 
     const { data: nodeData, position, type } = validation.data;
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     // Build update object
     const updateData: Record<string, unknown> = {
@@ -252,7 +252,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     // Check if node exists
     const { data: existingNode, error: checkError } = await supabase

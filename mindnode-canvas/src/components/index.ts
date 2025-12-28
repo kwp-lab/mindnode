@@ -9,6 +9,7 @@ export { default as SuggestionBubbles } from './SuggestionBubbles';
 export { default as WorkspaceSidebar } from './WorkspaceSidebar';
 export { SyncStatusIndicator, SyncStatusDot } from './SyncStatusIndicator';
 export { default as ExportButton } from './ExportButton';
+export { LogoutButton } from './LogoutButton';
 
 // Re-export types
 export type { CanvasWorkspaceProps } from './CanvasWorkspace';

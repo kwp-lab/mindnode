@@ -7,10 +7,12 @@
  * Requirements:
  * - 7.1: Create new workspace with unique ID and root node
  * - 7.5: Display list of all user workspaces with preview information
+ * - 12.3: Only display workspaces owned by authenticated user
  */
 
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/auth/server';
 import { Workspace } from '@/types';
 import { WorkspaceRow, NodeRow } from '@/lib/supabase/database.types';
 
@@ -20,7 +22,6 @@ import { WorkspaceRow, NodeRow } from '@/lib/supabase/database.types';
 
 export interface CreateWorkspaceRequest {
   title: string;
-  userId: string;
 }
 
 export interface WorkspaceListResponse {
@@ -78,15 +79,10 @@ function validateCreateRequest(
     return { valid: false, error: 'title cannot exceed 255 characters' };
   }
 
-  if (!request.userId || typeof request.userId !== 'string') {
-    return { valid: false, error: 'userId is required and must be a string' };
-  }
-
   return {
     valid: true,
     data: {
       title: request.title.trim(),
-      userId: request.userId,
     },
   };
 }
@@ -96,29 +92,23 @@ function validateCreateRequest(
 // ============================================
 
 /**
- * List all workspaces for a user
+ * List all workspaces for the authenticated user
  * Requirements: 7.5 - Display list of all user workspaces
+ * Requirements: 12.3 - Only display workspaces owned by authenticated user
  */
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    // Require authentication
+    const user = await requireAuth();
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId query parameter is required' },
-        { status: 400 }
-      );
-    }
+    const supabase = await createServerClient();
 
-    const supabase = createServerClient();
-
-    // Fetch workspaces for the user
-    // Requirements: 7.5 - Display list of all user workspaces with preview information
+    // Fetch workspaces for the authenticated user
+    // RLS policies ensure users can only see their own workspaces
     const { data, error } = await supabase
       .from('workspaces')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
 
     if (error) {
@@ -133,6 +123,13 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ workspaces } as WorkspaceListResponse);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     console.error('Workspaces GET error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -148,9 +145,13 @@ export async function GET(req: Request) {
 /**
  * Create a new workspace with a root node
  * Requirements: 7.1 - Create new workspace with unique ID and root node
+ * Requirements: 12.3 - Associate workspace with authenticated user
  */
 export async function POST(req: Request) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+    
     const body = await req.json();
 
     // Validate request
@@ -162,14 +163,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const { title, userId } = validation.data;
-    const supabase = createServerClient();
+    const { title } = validation.data;
+    const supabase = await createServerClient();
 
-    // Create workspace first (without root_node_id)
+    // Create workspace for the authenticated user
     const { data: workspaceData, error: workspaceError } = await supabase
       .from('workspaces')
       .insert({
-        user_id: userId,
+        user_id: user.id,
         title,
         viewport_x: 0,
         viewport_y: 0,
@@ -189,7 +190,6 @@ export async function POST(req: Request) {
     const workspaceRow = workspaceData as WorkspaceRow;
 
     // Create root node for the workspace
-    // Requirements: 7.1 - Generate unique workspace ID and root node
     const { data: rootNodeData, error: rootNodeError } = await supabase
       .from('nodes')
       .insert({
@@ -238,6 +238,13 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     console.error('Workspaces POST error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
