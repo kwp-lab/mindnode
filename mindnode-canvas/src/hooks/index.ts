@@ -8,3 +8,9 @@ export type {
   UseTextSelectionOptions,
   UseTextSelectionReturn,
 } from './useTextSelection';
+
+export { useAIGeneration } from './useAIGeneration';
+export type {
+  UseAIGenerationOptions,
+  UseAIGenerationReturn,
+} from './useAIGeneration';

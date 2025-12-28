@@ -186,20 +186,20 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - Test branch creation on button click
     - _Requirements: 4.1, 4.2_
 
-- [ ] 11. AI Integration with Vercel AI SDK
-  - [ ] 11.1 Create AI generation API route (/api/ai/generate)
+- [-] 11. AI Integration with Vercel AI SDK
+  - [x] 11.1 Create AI generation API route (/api/ai/generate)
     - Implement POST handler with streaming support
     - Integrate OpenAI with Vercel AI SDK
     - Use buildAIPrompt for context assembly
     - _Requirements: 3.1, 3.2, 3.3_
 
-  - [ ] 11.2 Create AI generation hook (useAIGeneration)
+  - [x] 11.2 Create AI generation hook (useAIGeneration)
     - Use useChat hook from Vercel AI SDK
     - Handle streaming token updates
     - Update node content in real-time
     - _Requirements: 3.3_
 
-  - [ ] 11.3 Implement error handling for AI requests
+  - [x] 11.3 Implement error handling for AI requests
     - Display error messages in nodes
     - Provide retry button
     - Log errors to monitoring service

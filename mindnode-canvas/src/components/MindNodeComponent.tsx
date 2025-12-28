@@ -400,21 +400,35 @@ function MindNodeComponent({ id, data, selected }: NodeProps) {
         )}
       </div>
 
-      {/* Error display */}
+      {/* Error display - Requirements: 3.5, 15.1 */}
       {error && (
-        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
-          <span className="font-medium">Error:</span> {error.message}
-          {error.canRetry && (
-            <button 
-              className="ml-2 text-red-700 underline hover:text-red-800"
-              onClick={() => {
-                // Retry logic will be implemented in AI integration task
-                console.log('Retry clicked for node:', id);
-              }}
-            >
-              Retry
-            </button>
-          )}
+        <div 
+          className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600"
+          data-testid="node-error"
+        >
+          <div className="flex items-start gap-2">
+            <span className="text-red-500">⚠️</span>
+            <div className="flex-1">
+              <span className="font-medium">Error:</span> {error.message}
+              {error.canRetry && (
+                <button 
+                  className="ml-2 px-2 py-0.5 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Dispatch custom event for retry - will be handled by CanvasWorkspace
+                    const event = new CustomEvent('mindnode:retry', { 
+                      detail: { nodeId: id },
+                      bubbles: true 
+                    });
+                    e.currentTarget.dispatchEvent(event);
+                  }}
+                  data-testid="retry-button"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

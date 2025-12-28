@@ -40,7 +40,7 @@ import { useMindNodeStore } from '../store';
 import { NODE_WIDTH, NODE_HEIGHT } from '../lib/layout';
 import MindNodeComponent from './MindNodeComponent';
 import SelectionToolbar from './SelectionToolbar';
-import { useTextSelection } from '../hooks';
+import { useTextSelection, useAIGeneration } from '../hooks';
 
 // ============================================
 // TYPES
@@ -157,6 +157,26 @@ function CanvasWorkspaceInner({
     minLength: 1,
     clearDelay: 150,
     enabled: true,
+  });
+
+  // AI generation hook for streaming responses
+  // Requirements: 3.1, 3.3 - AI generation with streaming
+  const { generate: generateAI, retry: retryAI, getError, clearError } = useAIGeneration({
+    onStart: (nodeId) => {
+      console.log('AI generation started for node:', nodeId);
+    },
+    onComplete: (nodeId, content) => {
+      console.log('AI generation completed for node:', nodeId);
+      // Apply layout after AI content is generated
+      setTimeout(() => applyLayout(), 100);
+    },
+    onError: (nodeId, error) => {
+      console.error('AI generation error for node:', nodeId, error);
+      // Update node with error state
+      updateNode(nodeId, {
+        isGenerating: false,
+      });
+    },
   });
 
   // Convert store nodes/edges to React Flow format
@@ -344,6 +364,7 @@ function CanvasWorkspaceInner({
   /**
    * Create a selection branch (child node with selected text as context)
    * Requirements: 4.2, 4.3 - Create child node with selectionSource field
+   * Requirements: 3.1 - Automatically trigger AI response
    * 
    * This creates a new AI node that will use the selected text as additional
    * context for generating a focused response.
@@ -380,7 +401,7 @@ function CanvasWorkspaceInner({
       addNode(newNode);
       setSelectedNode(newNode.id);
       
-      // Mark as generating (for AI integration - Task 11)
+      // Mark as generating
       startGeneration(newNode.id);
       
       // Clear the text selection
@@ -392,15 +413,13 @@ function CanvasWorkspaceInner({
       // Apply layout after adding node
       setTimeout(() => applyLayout(), 0);
       
-      // Note: Actual AI generation will be triggered in Task 11 (AI Integration)
-      // For now, we just create the node structure with selectionSource
-      console.log('Selection branch created:', {
-        nodeId: newNode.id,
-        parentId: selection.nodeId,
-        selectionSource: selectedText,
-      });
+      // Trigger AI generation with the selection source
+      // Requirements: 3.1 - Automatically trigger AI response
+      setTimeout(() => {
+        generateAI(newNode.id, selectedText);
+      }, 100);
     },
-    [selection, storeNodes, workspaceId, addNode, setSelectedNode, startGeneration, clearSelection, applyLayout]
+    [selection, storeNodes, workspaceId, addNode, setSelectedNode, startGeneration, clearSelection, applyLayout, generateAI]
   );
 
   /**
@@ -453,6 +472,25 @@ function CanvasWorkspaceInner({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Handle retry events from nodes
+  // Requirements: 3.5, 15.1 - Error handling with retry
+  useEffect(() => {
+    const handleRetry = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId: string }>;
+      const { nodeId } = customEvent.detail;
+      if (nodeId) {
+        clearError(nodeId);
+        retryAI(nodeId);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('mindnode:retry', handleRetry);
+      return () => container.removeEventListener('mindnode:retry', handleRetry);
+    }
+  }, [retryAI, clearError]);
 
   // Sync viewport from store on mount
   useEffect(() => {

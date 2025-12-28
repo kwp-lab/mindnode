@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {},
+      "disabled": true,
+      "autoApprove": []
+    },
+    "ai-elements": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://registry.ai-sdk.dev/api/mcp"
+      ]
+    },
+    "Context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "ctx7sk-f82ea6ce-fdf6-4361-a2ee-41d1c85b69fa"
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": [
+        "get-library-docs"
+      ]
+    }
+  }
+}
