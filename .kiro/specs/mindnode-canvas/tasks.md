@@ -211,8 +211,8 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - Test retry button functionality
     - _Requirements: 3.5, 15.1_
 
-- [ ] 12. AI Suggestion Engine
-  - [ ] 12.1 Create suggestions API route (/api/ai/suggestions)
+- [x] 12. AI Suggestion Engine
+  - [x] 12.1 Create suggestions API route (/api/ai/suggestions)
     - Implement POST handler for suggestion generation
     - Generate 3 suggestions with 15-char limit
     - Use context path for intelligent suggestions
@@ -222,7 +222,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 11: Suggestion Length Constraint**
     - **Validates: Requirements 6.5**
 
-  - [ ] 12.3 Create SuggestionBubbles component
+  - [x] 12.3 Create SuggestionBubbles component
     - Display 3 suggestion bubbles near AI nodes
     - Handle click to create branch
     - Animate appearance after generation

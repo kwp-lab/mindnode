@@ -14,3 +14,9 @@ export type {
   UseAIGenerationOptions,
   UseAIGenerationReturn,
 } from './useAIGeneration';
+
+export { useSuggestions } from './useSuggestions';
+export type {
+  UseSuggestionsOptions,
+  UseSuggestionsReturn,
+} from './useSuggestions';

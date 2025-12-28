@@ -23,6 +23,7 @@ import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import { useMindNodeStore } from '../store';
 import { NodeType } from '../types';
+import SuggestionBubbles from './SuggestionBubbles';
 
 // ============================================
 // TYPES
@@ -42,6 +43,8 @@ export interface MindNodeData {
     message: string;
     canRetry: boolean;
   };
+  /** Callback for when a suggestion is clicked */
+  onSuggestionClick?: (suggestion: string, nodeId: string) => void;
 }
 
 // ============================================
@@ -260,7 +263,9 @@ function MindNodeComponent({ id, data, selected }: NodeProps) {
     nodeType,
     isEditing = false,
     isGenerating = false,
+    suggestions = [],
     error,
+    onSuggestionClick,
   } = nodeData;
 
   /**
@@ -325,6 +330,29 @@ function MindNodeComponent({ id, data, selected }: NodeProps) {
     },
     [id, updateNode]
   );
+
+  /**
+   * Handle suggestion click
+   * Requirements: 6.4 - Create child node with suggestion on click
+   */
+  const handleSuggestionClick = useCallback(
+    (suggestion: string) => {
+      if (onSuggestionClick) {
+        onSuggestionClick(suggestion, id);
+      } else {
+        // Dispatch custom event for suggestion click - will be handled by CanvasWorkspace
+        const event = new CustomEvent('mindnode:suggestion', {
+          detail: { nodeId: id, suggestion },
+          bubbles: true,
+        });
+        document.dispatchEvent(event);
+      }
+    },
+    [id, onSuggestionClick]
+  );
+
+  // Show suggestions only for AI nodes that are not generating and have suggestions
+  const showSuggestions = nodeType === 'ai' && !isGenerating && !isEditing && suggestions.length > 0;
 
   return (
     <div
@@ -438,6 +466,17 @@ function MindNodeComponent({ id, data, selected }: NodeProps) {
         position={Position.Right}
         className="w-3 h-3 !bg-gray-400 border-2 border-white"
       />
+
+      {/* Suggestion bubbles for AI nodes - Requirements: 6.3, 6.4 */}
+      {showSuggestions && (
+        <SuggestionBubbles
+          nodeId={id}
+          suggestions={suggestions}
+          onSuggestionClick={handleSuggestionClick}
+          visible={showSuggestions}
+          position="bottom"
+        />
+      )}
     </div>
   );
 }
@@ -447,6 +486,11 @@ export default memo(MindNodeComponent, (prevProps, nextProps) => {
   const prevData = prevProps.data as unknown as MindNodeData;
   const nextData = nextProps.data as unknown as MindNodeData;
   
+  // Compare suggestions arrays
+  const suggestionsEqual = 
+    (prevData.suggestions?.length || 0) === (nextData.suggestions?.length || 0) &&
+    (prevData.suggestions || []).every((s, i) => s === (nextData.suggestions || [])[i]);
+  
   return (
     prevProps.id === nextProps.id &&
     prevProps.selected === nextProps.selected &&
@@ -455,6 +499,7 @@ export default memo(MindNodeComponent, (prevProps, nextProps) => {
     prevData.nodeType === nextData.nodeType &&
     prevData.isEditing === nextData.isEditing &&
     prevData.isGenerating === nextData.isGenerating &&
-    prevData.error?.message === nextData.error?.message
+    prevData.error?.message === nextData.error?.message &&
+    suggestionsEqual
   );
 });
