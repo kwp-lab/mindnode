@@ -125,8 +125,8 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 4: Enter Creates Sibling Node**
     - **Validates: Requirements 2.1, 2.2**
 
-- [ ] 8. Node Component
-  - [ ] 8.1 Create MindNodeComponent with view/edit modes
+- [x] 8. Node Component
+  - [x] 8.1 Create MindNodeComponent with view/edit modes
     - Implement Markdown rendering with react-markdown
     - Implement edit mode with textarea
     - Handle mode switching on double-click
@@ -136,7 +136,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 6: Markdown Round-Trip Preservation**
     - **Validates: Requirements 2.4, 9.4**
 
-  - [ ] 8.3 Implement XSS sanitization with DOMPurify
+  - [x] 8.3 Implement XSS sanitization with DOMPurify
     - Sanitize Markdown HTML output
     - Configure allowed tags and attributes
     - _Requirements: 9.5_
@@ -145,7 +145,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 14: XSS Sanitization Safety**
     - **Validates: Requirements 9.5**
 
-  - [ ] 8.5 Implement node visual states (user/ai/selected/editing)
+  - [x] 8.5 Implement node visual states (user/ai/selected/editing)
     - Apply distinct styling based on node type
     - Show selection highlight
     - Display edit and loading indicators
