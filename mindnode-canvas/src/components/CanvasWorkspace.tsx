@@ -8,6 +8,9 @@
  * - 1.1: Pan smoothly in any direction
  * - 1.2: Zoom in/out with cursor as focal point
  * - 1.3: Render all visible nodes within viewport
+ * - 4.1: Display Floating_Toolbar near text selection
+ * - 4.2: Create child node with selected text as context
+ * - 4.3: Store selected text in node's selectionSource field
  */
 
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -36,6 +39,8 @@ import { MindNode, Edge, createEdgeFromNodes } from '../types';
 import { useMindNodeStore } from '../store';
 import { NODE_WIDTH, NODE_HEIGHT } from '../lib/layout';
 import MindNodeComponent from './MindNodeComponent';
+import SelectionToolbar from './SelectionToolbar';
+import { useTextSelection } from '../hooks';
 
 // ============================================
 // TYPES
@@ -143,7 +148,16 @@ function CanvasWorkspaceInner({
     updateNodePosition,
     deleteNode,
     applyLayout,
+    startGeneration,
   } = useMindNodeStore();
+
+  // Text selection hook for floating toolbar
+  // Requirements: 4.1 - Detect text selection within nodes
+  const { selection, clearSelection } = useTextSelection({
+    minLength: 1,
+    clearDelay: 150,
+    enabled: true,
+  });
 
   // Convert store nodes/edges to React Flow format
   const rfNodes = useMemo(
@@ -328,6 +342,75 @@ function CanvasWorkspaceInner({
   );
 
   /**
+   * Create a selection branch (child node with selected text as context)
+   * Requirements: 4.2, 4.3 - Create child node with selectionSource field
+   * 
+   * This creates a new AI node that will use the selected text as additional
+   * context for generating a focused response.
+   */
+  const createSelectionBranch = useCallback(
+    (selectedText: string) => {
+      if (!selection) return;
+      
+      const parentNode = storeNodes.find((n) => n.id === selection.nodeId);
+      if (!parentNode) return;
+
+      // Create a new AI node with the selection source
+      const newNode: MindNode = {
+        id: `node-${Date.now()}`,
+        workspaceId,
+        parentId: selection.nodeId,
+        type: 'ai', // AI node since it will trigger AI generation
+        data: {
+          label: '', // Will be filled by AI response
+          contextContent: '', // Will be filled by AI response
+          selectionSource: selectedText, // Store the selected text
+          isEditing: false,
+          isGenerating: true, // Start in generating state
+        },
+        position: {
+          x: parentNode.position.x + NODE_WIDTH + 100,
+          y: parentNode.position.y,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Add the node
+      addNode(newNode);
+      setSelectedNode(newNode.id);
+      
+      // Mark as generating (for AI integration - Task 11)
+      startGeneration(newNode.id);
+      
+      // Clear the text selection
+      clearSelection();
+      
+      // Clear browser selection
+      window.getSelection()?.removeAllRanges();
+      
+      // Apply layout after adding node
+      setTimeout(() => applyLayout(), 0);
+      
+      // Note: Actual AI generation will be triggered in Task 11 (AI Integration)
+      // For now, we just create the node structure with selectionSource
+      console.log('Selection branch created:', {
+        nodeId: newNode.id,
+        parentId: selection.nodeId,
+        selectionSource: selectedText,
+      });
+    },
+    [selection, storeNodes, workspaceId, addNode, setSelectedNode, startGeneration, clearSelection, applyLayout]
+  );
+
+  /**
+   * Handle toolbar dismiss
+   */
+  const handleToolbarDismiss = useCallback(() => {
+    clearSelection();
+  }, [clearSelection]);
+
+  /**
    * Handle keyboard shortcuts
    * Requirements: 2.1, 2.2 - Tab and Enter shortcuts
    */
@@ -381,7 +464,7 @@ function CanvasWorkspaceInner({
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full"
+      className="w-full h-full relative"
       style={{ width: '100%', height: '100%' }}
     >
       <ReactFlow
@@ -426,6 +509,17 @@ function CanvasWorkspaceInner({
           position="bottom-left"
         />
       </ReactFlow>
+      
+      {/* Selection Toolbar - Requirements: 4.1, 4.2 */}
+      {selection && (
+        <SelectionToolbar
+          selectedText={selection.text}
+          position={selection.position}
+          onCreateBranch={createSelectionBranch}
+          onDismiss={handleToolbarDismiss}
+          visible={true}
+        />
+      )}
     </div>
   );
 }

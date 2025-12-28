@@ -159,23 +159,23 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - Test loading animation
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
-- [ ] 9. Checkpoint - UI Components Complete
+- [x] 9. Checkpoint - UI Components Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Text Selection and Floating Toolbar
-  - [ ] 10.1 Implement text selection detection hook
+- [x] 10. Text Selection and Floating Toolbar
+  - [x] 10.1 Implement text selection detection hook
     - Use selectionchange event to detect text selection
     - Calculate selection position with getBoundingClientRect
     - Filter selections within node boundaries
     - _Requirements: 4.1_
 
-  - [ ] 10.2 Create SelectionToolbar component
+  - [x] 10.2 Create SelectionToolbar component
     - Position toolbar near selection
     - Provide "AI Branch" button
     - Handle click outside to dismiss
     - _Requirements: 4.1, 4.2_
 
-  - [ ] 10.3 Implement selection branch creation
+  - [x] 10.3 Implement selection branch creation
     - Create child node with selectionSource field
     - Trigger AI generation with selected text
     - _Requirements: 4.2, 4.3_
