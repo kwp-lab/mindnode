@@ -5,14 +5,17 @@
  * 
  * Implements:
  * - Task 14.3: Workspace switching logic integration
+ * - Task 16.3: Export UI integration
  * 
  * Requirements:
  * - 7.2: Load workspace node tree and canvas state when switching
  * - 7.5: Display list of all user workspaces
+ * - 11.4: Provide download link for Markdown file
+ * - 11.5: Support exporting individual branches
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { CanvasWorkspace, WorkspaceSidebar } from '../components';
+import { CanvasWorkspace, WorkspaceSidebar, ExportButton } from '../components';
 import { MindNode } from '../types';
 import { useMindNodeStore } from '../store';
 import { useWorkspaces } from '../hooks';
@@ -42,7 +45,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  const { nodes, setNodes, setCurrentWorkspace } = useMindNodeStore();
+  const { nodes, setNodes, setCurrentWorkspace, selectedNodeId } = useMindNodeStore();
   
   // Use workspace management hook
   const {
@@ -145,6 +148,24 @@ export default function Home() {
 
       {/* Main Canvas Area */}
       <div className="flex-1 relative">
+        {/* Workspace Toolbar */}
+        <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          {/* Current workspace title */}
+          {currentWorkspaceId && (
+            <span className="text-sm text-gray-600 bg-white/80 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+              {workspaces.find(w => w.id === currentWorkspaceId)?.title || 'Workspace'}
+            </span>
+          )}
+          
+          {/* Export Button - Requirements: 11.4, 11.5 */}
+          <ExportButton
+            nodes={nodes}
+            workspaceTitle={workspaces.find(w => w.id === currentWorkspaceId)?.title}
+            selectedNodeId={selectedNodeId}
+            disabled={isSwitching}
+          />
+        </div>
+
         {/* Loading overlay when switching workspaces */}
         {isSwitching && (
           <div className="absolute inset-0 z-40 bg-white/80 flex items-center justify-center">

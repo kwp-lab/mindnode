@@ -8,6 +8,7 @@ export { default as SelectionToolbar } from './SelectionToolbar';
 export { default as SuggestionBubbles } from './SuggestionBubbles';
 export { default as WorkspaceSidebar } from './WorkspaceSidebar';
 export { SyncStatusIndicator, SyncStatusDot } from './SyncStatusIndicator';
+export { default as ExportButton } from './ExportButton';
 
 // Re-export types
 export type { CanvasWorkspaceProps } from './CanvasWorkspace';
@@ -16,3 +17,4 @@ export type { SelectionToolbarProps } from './SelectionToolbar';
 export type { SuggestionBubblesProps } from './SuggestionBubbles';
 export type { WorkspaceSidebarProps } from './WorkspaceSidebar';
 export type { SyncStatusIndicatorProps } from './SyncStatusIndicator';
+export type { ExportButtonProps } from './ExportButton';

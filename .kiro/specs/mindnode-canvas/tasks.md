@@ -288,8 +288,8 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - Test error state display
     - _Requirements: 10.5_
 
-- [ ] 16. Export Functionality
-  - [ ] 16.1 Implement Markdown export logic
+- [x] 16. Export Functionality
+  - [x] 16.1 Implement Markdown export logic
     - Traverse tree and generate hierarchical Markdown
     - Map tree depth to heading levels
     - Preserve node content and formatting
@@ -299,7 +299,7 @@ This implementation plan breaks down the MindNode Canvas feature into incrementa
     - **Property 16: Export Tree Structure Preservation**
     - **Validates: Requirements 11.2, 11.3**
 
-  - [ ] 16.3 Create export UI
+  - [x] 16.3 Create export UI
     - Add export button to workspace toolbar
     - Provide download link for Markdown file
     - Support exporting individual branches
