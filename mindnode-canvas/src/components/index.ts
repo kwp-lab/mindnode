@@ -13,6 +13,23 @@ export { LogoutButton } from './LogoutButton';
 export { ConnectionIndicator, ConnectionStatusIcon } from './ConnectionIndicator';
 export { ErrorNotification, InlineError } from './ErrorNotification';
 
+// Loading states and transitions
+export {
+  Skeleton,
+  NodeSkeleton,
+  WorkspaceItemSkeleton,
+  WorkspaceSidebarSkeleton,
+  CanvasSkeleton,
+  PageSkeleton,
+  FadeTransition,
+  SlideTransition,
+  ScaleTransition,
+  LoadingOverlay,
+  Spinner,
+  ProgressBar,
+  IndeterminateProgress,
+} from './LoadingStates';
+
 // Re-export types
 export type { CanvasWorkspaceProps } from './CanvasWorkspace';
 export type { MindNodeData } from './MindNodeComponent';

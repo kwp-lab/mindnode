@@ -35,6 +35,8 @@ export interface ExportButtonProps {
   disabled?: boolean;
   /** Custom class name */
   className?: string;
+  /** Compact mode for mobile - icon only */
+  compact?: boolean;
 }
 
 type ExportMode = 'workspace' | 'branch';
@@ -110,6 +112,7 @@ export default function ExportButton({
   selectedNodeId,
   disabled = false,
   className = '',
+  compact = false,
 }: ExportButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [includeNodeTypes, setIncludeNodeTypes] = useState(false);
@@ -194,7 +197,7 @@ export default function ExportButton({
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled || !hasNodes}
         className={`
-          inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg
+          inline-flex items-center gap-2 ${compact ? 'p-2' : 'px-3 py-2'} text-sm font-medium rounded-lg
           transition-all duration-200
           ${disabled || !hasNodes
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -206,17 +209,22 @@ export default function ExportButton({
         data-testid="export-button"
         aria-expanded={isOpen}
         aria-haspopup="true"
+        aria-label={compact ? 'Export' : undefined}
       >
         {exportStatus === 'success' ? (
           <>
             <CheckIcon className="w-4 h-4" />
-            <span>Exported!</span>
+            {!compact && <span>Exported!</span>}
           </>
         ) : (
           <>
             <DownloadIcon className="w-4 h-4" />
-            <span>Export</span>
-            <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            {!compact && (
+              <>
+                <span>Export</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </>
+            )}
           </>
         )}
       </button>

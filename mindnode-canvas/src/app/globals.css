@@ -96,6 +96,100 @@
   animation: generating-shimmer 1.5s infinite;
 }
 
+/* Indeterminate progress bar animation */
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-indeterminate {
+  animation: indeterminate 1.5s infinite ease-in-out;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #e5e7eb 0%,
+    #f3f4f6 50%,
+    #e5e7eb 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Smooth transitions for layout changes */
+.transition-layout {
+  transition: transform 0.3s ease-out, opacity 0.2s ease-out;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 767px) {
+  /* Adjust node sizes for mobile */
+  .react-flow__node > div {
+    min-width: 240px !important;
+    max-width: 280px !important;
+  }
+  
+  /* Larger touch targets for handles */
+  .react-flow__handle {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  
+  /* Always show handles on mobile for easier interaction */
+  .react-flow__handle {
+    opacity: 1 !important;
+  }
+  
+  /* Adjust controls position for mobile */
+  .react-flow__controls {
+    bottom: 80px !important;
+  }
+  
+  /* Hide minimap on mobile */
+  .react-flow__minimap {
+    display: none !important;
+  }
+}
+
+/* Touch-friendly styles */
+@media (pointer: coarse) {
+  /* Larger touch targets */
+  .react-flow__handle {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  /* Prevent text selection during drag */
+  .react-flow__node {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .safe-area-inset {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
 /* Smooth transitions for node state changes */
 .react-flow__node > div {
   transition: all 0.2s ease-in-out;
