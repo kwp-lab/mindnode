@@ -1,6 +1,8 @@
 # Supabase Configuration for MindNode Canvas
 # See: https://supabase.com/docs/guides/cli/config
 
+project_id = "mindnode"
+
 [api]
 enabled = true
 port = 54321
