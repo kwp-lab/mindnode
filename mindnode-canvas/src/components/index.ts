@@ -10,6 +10,8 @@ export { default as WorkspaceSidebar } from './WorkspaceSidebar';
 export { SyncStatusIndicator, SyncStatusDot } from './SyncStatusIndicator';
 export { default as ExportButton } from './ExportButton';
 export { LogoutButton } from './LogoutButton';
+export { ConnectionIndicator, ConnectionStatusIcon } from './ConnectionIndicator';
+export { ErrorNotification, InlineError } from './ErrorNotification';
 
 // Re-export types
 export type { CanvasWorkspaceProps } from './CanvasWorkspace';
@@ -19,3 +21,5 @@ export type { SuggestionBubblesProps } from './SuggestionBubbles';
 export type { WorkspaceSidebarProps } from './WorkspaceSidebar';
 export type { SyncStatusIndicatorProps } from './SyncStatusIndicator';
 export type { ExportButtonProps } from './ExportButton';
+export type { ConnectionIndicatorProps } from './ConnectionIndicator';
+export type { ErrorNotificationProps, InlineErrorProps } from './ErrorNotification';

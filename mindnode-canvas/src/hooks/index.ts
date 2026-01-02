@@ -27,6 +27,9 @@ export type {
   UseWorkspacesReturn,
 } from './useWorkspaces';
 
+export { useNetworkStatus } from './useNetworkStatus';
+export type { NetworkStatus } from './useNetworkStatus';
+
 // Re-export persistence hook from lib
 export { usePersistence } from '../lib/persistence';
 export type { UsePersistenceReturn } from '../lib/persistence';

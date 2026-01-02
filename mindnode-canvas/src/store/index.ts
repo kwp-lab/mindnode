@@ -6,6 +6,10 @@ import {
   Workspace,
   deriveEdgesFromNodes,
   createEdgeFromNodes,
+  validateNode,
+  validateNodeUpdate,
+  validateWorkspace,
+  detectCircularReference,
 } from '../types';
 import {
   getLayoutedElements,
@@ -152,10 +156,23 @@ export const useMindNodeStore = create<MindNodeStore>()(
 
     /**
      * Add a new node to the canvas
-     * Requirements: 2.1, 2.2 - Node creation
+     * Requirements: 2.1, 2.2, 15.4 - Node creation with validation
      */
     addNode: (node: MindNode) => {
       set((state) => {
+        // Validate the node
+        const validation = validateNode(node);
+        if (!validation.valid) {
+          console.error('Node validation failed:', validation.errors);
+          throw new Error(validation.errors.join(', '));
+        }
+        
+        // Check for circular references
+        if (node.parentId && detectCircularReference(node.id, node.parentId, state.nodes)) {
+          console.error('Circular reference detected');
+          throw new Error('Cannot add node: would create circular reference');
+        }
+        
         state.nodes.push(node);
         // If node has a parent, create an edge
         if (node.parentId) {
@@ -167,12 +184,28 @@ export const useMindNodeStore = create<MindNodeStore>()(
 
     /**
      * Update node data (content, editing state, etc.)
-     * Requirements: 2.4 - Node content editing
+     * Requirements: 2.4, 15.4 - Node content editing with validation
      */
     updateNode: (id: string, data: Partial<MindNode['data']>) => {
       set((state) => {
         const nodeIndex = state.nodes.findIndex((n) => n.id === id);
         if (nodeIndex !== -1) {
+          // Validate the update - only validate if content fields are being updated
+          if (data.contextContent !== undefined || data.label !== undefined) {
+            const updates: Partial<MindNode> = {};
+            if (data.contextContent !== undefined || data.label !== undefined) {
+              updates.data = {
+                label: data.label ?? state.nodes[nodeIndex].data.label,
+                contextContent: data.contextContent ?? state.nodes[nodeIndex].data.contextContent,
+              };
+            }
+            const validation = validateNodeUpdate(id, updates, state.nodes);
+            if (!validation.valid) {
+              console.error('Node update validation failed:', validation.errors);
+              throw new Error(validation.errors.join(', '));
+            }
+          }
+          
           state.nodes[nodeIndex].data = {
             ...state.nodes[nodeIndex].data,
             ...data,
@@ -397,26 +430,43 @@ export const useMindNodeStore = create<MindNodeStore>()(
 
     /**
      * Add a new workspace
-     * Requirements: 7.1 - Workspace creation
+     * Requirements: 7.1, 15.4 - Workspace creation with validation
      */
     addWorkspace: (workspace: Workspace) => {
       set((state) => {
+        // Validate the workspace
+        const validation = validateWorkspace(workspace);
+        if (!validation.valid) {
+          console.error('Workspace validation failed:', validation.errors);
+          throw new Error(validation.errors.join(', '));
+        }
+        
         state.workspaces.push(workspace);
       });
     },
 
     /**
      * Update workspace data
+     * Requirements: 15.4 - Workspace update with validation
      */
     updateWorkspace: (id: string, data: Partial<Workspace>) => {
       set((state) => {
         const workspaceIndex = state.workspaces.findIndex((w) => w.id === id);
         if (workspaceIndex !== -1) {
-          state.workspaces[workspaceIndex] = {
+          const updatedWorkspace = {
             ...state.workspaces[workspaceIndex],
             ...data,
             updatedAt: new Date(),
           };
+          
+          // Validate the updated workspace
+          const validation = validateWorkspace(updatedWorkspace);
+          if (!validation.valid) {
+            console.error('Workspace update validation failed:', validation.errors);
+            throw new Error(validation.errors.join(', '));
+          }
+          
+          state.workspaces[workspaceIndex] = updatedWorkspace;
         }
       });
     },

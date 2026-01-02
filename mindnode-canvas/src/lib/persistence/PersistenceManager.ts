@@ -6,12 +6,16 @@
  * - Batch multiple updates into single transaction
  * - Use optimistic updates for UI responsiveness
  * 
- * Requirements: 10.1, 10.2
+ * Implements Task 18.3:
+ * - Handle database errors with user-friendly messages
+ * 
+ * Requirements: 10.1, 10.2, 15.2
  */
 
 import { MindNode } from '../../types';
 import { offlineQueue, QueuedOperation } from './OfflineQueue';
 import { syncStatus } from './SyncStatus';
+import { DatabaseError, databaseErrorHandler } from '../errors';
 
 // ============================================
 // TYPES
@@ -82,6 +86,7 @@ export class PersistenceManager {
 
   /**
    * Sync a single operation to the server
+   * Requirements: 15.2 - Handle database errors
    */
   private async syncOperation(operation: QueuedOperation): Promise<boolean> {
     const { type, entity, entityId, data } = operation;
@@ -128,9 +133,12 @@ export class PersistenceManager {
         }
       }
 
-      return response.ok;
+      // Handle response errors
+      await databaseErrorHandler.handleResponse(response);
+      return true;
     } catch (error) {
-      console.error('Sync operation failed:', error);
+      const dbError = databaseErrorHandler.handleError(error);
+      console.error('Sync operation failed:', dbError.userMessage);
       return false;
     }
   }
@@ -281,6 +289,7 @@ export class PersistenceManager {
 
   /**
    * Persist a single update
+   * Requirements: 15.2 - Handle database errors with user-friendly messages
    */
   private async persistUpdate(update: PendingUpdate): Promise<void> {
     if (!navigator.onLine) {
@@ -303,28 +312,29 @@ export class PersistenceManager {
         body: JSON.stringify(update.data),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
+      await databaseErrorHandler.handleResponse(response);
       syncStatus.setSynced();
     } catch (error) {
-      console.error('Failed to persist update:', error);
+      const dbError = databaseErrorHandler.handleError(error);
+      console.error('Failed to persist update:', dbError.userMessage);
       
-      // Queue for retry
-      await offlineQueue.enqueue({
-        type: 'update',
-        entity: 'node',
-        entityId: update.nodeId,
-        data: update.data as Record<string, unknown>,
-      });
+      // Queue for retry if retryable
+      if (DatabaseError.isRetryable(error)) {
+        await offlineQueue.enqueue({
+          type: 'update',
+          entity: 'node',
+          entityId: update.nodeId,
+          data: update.data as Record<string, unknown>,
+        });
+      }
       
-      syncStatus.setError('Failed to save changes');
+      syncStatus.setError(dbError.userMessage);
     }
   }
 
   /**
    * Persist a batch of updates
+   * Requirements: 15.2 - Handle database errors
    */
   private async persistBatch(updates: BatchedUpdate[]): Promise<void> {
     if (!navigator.onLine) {
@@ -347,11 +357,10 @@ export class PersistenceManager {
         body: JSON.stringify({ updates }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      await databaseErrorHandler.handleResponse(response);
     } catch (error) {
-      console.error('Batch persist failed, falling back to individual updates:', error);
+      const dbError = databaseErrorHandler.handleError(error);
+      console.error('Batch persist failed, falling back to individual updates:', dbError.userMessage);
       
       // Fall back to individual updates
       for (const update of updates) {
@@ -366,6 +375,7 @@ export class PersistenceManager {
 
   /**
    * Create a new node with optimistic update
+   * Requirements: 15.2 - Handle database errors
    */
   async createNode(node: MindNode): Promise<boolean> {
     if (!navigator.onLine) {
@@ -387,29 +397,31 @@ export class PersistenceManager {
         body: JSON.stringify(node),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
+      await databaseErrorHandler.handleResponse(response);
       syncStatus.setSynced();
       return true;
     } catch (error) {
-      console.error('Failed to create node:', error);
+      const dbError = databaseErrorHandler.handleError(error);
+      console.error('Failed to create node:', dbError.userMessage);
       
-      await offlineQueue.enqueue({
-        type: 'create',
-        entity: 'node',
-        entityId: node.id,
-        data: node as unknown as Record<string, unknown>,
-      });
+      // Queue for retry if retryable
+      if (DatabaseError.isRetryable(error)) {
+        await offlineQueue.enqueue({
+          type: 'create',
+          entity: 'node',
+          entityId: node.id,
+          data: node as unknown as Record<string, unknown>,
+        });
+      }
       
-      syncStatus.setError('Failed to create node');
+      syncStatus.setError(dbError.userMessage);
       return true; // Still return true for optimistic update
     }
   }
 
   /**
    * Delete a node with optimistic update
+   * Requirements: 15.2 - Handle database errors
    */
   async deleteNode(nodeId: string): Promise<boolean> {
     // Clear any pending updates for this node
@@ -440,23 +452,24 @@ export class PersistenceManager {
         method: 'DELETE',
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
+      await databaseErrorHandler.handleResponse(response);
       syncStatus.setSynced();
       return true;
     } catch (error) {
-      console.error('Failed to delete node:', error);
+      const dbError = databaseErrorHandler.handleError(error);
+      console.error('Failed to delete node:', dbError.userMessage);
       
-      await offlineQueue.enqueue({
-        type: 'delete',
-        entity: 'node',
-        entityId: nodeId,
-        data: {},
-      });
+      // Queue for retry if retryable
+      if (DatabaseError.isRetryable(error)) {
+        await offlineQueue.enqueue({
+          type: 'delete',
+          entity: 'node',
+          entityId: nodeId,
+          data: {},
+        });
+      }
       
-      syncStatus.setError('Failed to delete node');
+      syncStatus.setError(dbError.userMessage);
       return true;
     }
   }

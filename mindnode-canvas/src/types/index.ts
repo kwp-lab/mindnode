@@ -212,7 +212,7 @@ export function validateWorkspace(workspace: Partial<Workspace>): ValidationResu
 
 /**
  * Validates a node object and returns validation result
- * Requirements: 2.1, 2.2 - Node creation validation
+ * Requirements: 2.1, 2.2, 15.4 - Node creation validation
  */
 export function validateNode(node: Partial<MindNode>): ValidationResult {
   const errors: string[] = [];
@@ -245,6 +245,18 @@ export function validateNode(node: Partial<MindNode>): ValidationResult {
     if (node.data.contextContent !== undefined && 
         typeof node.data.contextContent !== 'string') {
       errors.push('Node content must be a string');
+    }
+    
+    // Validate content is non-empty (Requirement 15.4)
+    if (node.data.contextContent !== undefined && 
+        node.data.contextContent.trim().length === 0) {
+      errors.push('Node content cannot be empty');
+    }
+    
+    // Validate label is non-empty
+    if (node.data.label !== undefined && 
+        node.data.label.trim().length === 0) {
+      errors.push('Node label cannot be empty');
     }
   }
   
@@ -285,6 +297,90 @@ export function validateEdge(edge: Partial<Edge>): ValidationResult {
   
   if (edge.type !== undefined && !isEdgeType(edge.type)) {
     errors.push('Edge type must be "default" or "smoothstep"');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Detects circular parent references in a tree structure
+ * Requirements: 15.4 - Prevent circular parent references
+ * 
+ * @param nodeId - The node to check
+ * @param newParentId - The proposed new parent
+ * @param nodes - All nodes in the tree
+ * @returns true if adding this parent would create a cycle
+ */
+export function detectCircularReference(
+  nodeId: string,
+  newParentId: string | null,
+  nodes: MindNode[]
+): boolean {
+  if (!newParentId) return false;
+  if (nodeId === newParentId) return true;
+  
+  // Build a map for quick lookups
+  const nodeMap = new Map<string, MindNode>();
+  for (const node of nodes) {
+    nodeMap.set(node.id, node);
+  }
+  
+  // Traverse up from the proposed parent to see if we reach the node
+  let currentId: string | null = newParentId;
+  const visited = new Set<string>();
+  
+  while (currentId !== null) {
+    if (currentId === nodeId) {
+      return true; // Circular reference detected
+    }
+    
+    if (visited.has(currentId)) {
+      // Already visited this node, there's a cycle in the existing tree
+      return true;
+    }
+    
+    visited.add(currentId);
+    const currentNode = nodeMap.get(currentId);
+    
+    if (!currentNode) break;
+    currentId = currentNode.parentId;
+  }
+  
+  return false;
+}
+
+/**
+ * Validates that a node update doesn't create circular references
+ * Requirements: 15.4 - Prevent circular parent references
+ */
+export function validateNodeUpdate(
+  nodeId: string,
+  updates: Partial<MindNode>,
+  allNodes: MindNode[]
+): ValidationResult {
+  const errors: string[] = [];
+  
+  // Check for circular reference if parent is being updated
+  if (updates.parentId !== undefined) {
+    if (detectCircularReference(nodeId, updates.parentId, allNodes)) {
+      errors.push('Cannot set parent: would create circular reference');
+    }
+  }
+  
+  // Validate other fields
+  if (updates.data) {
+    if (updates.data.contextContent !== undefined && 
+        updates.data.contextContent.trim().length === 0) {
+      errors.push('Node content cannot be empty');
+    }
+    
+    if (updates.data.label !== undefined && 
+        updates.data.label.trim().length === 0) {
+      errors.push('Node label cannot be empty');
+    }
   }
   
   return {
