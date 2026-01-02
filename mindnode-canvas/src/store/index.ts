@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { useShallow } from 'zustand/react/shallow';
 import {
   MindNode,
   Edge,
@@ -16,6 +17,11 @@ import {
   layoutDescendants,
   LayoutDirection,
 } from '../lib/layout';
+import {
+  calculateViewportBounds,
+  getVisibleNodes,
+  ViewportBounds,
+} from '../lib/viewport';
 
 // ============================================
 // STORE TYPES
@@ -25,6 +31,11 @@ export interface Viewport {
   x: number;
   y: number;
   zoom: number;
+}
+
+export interface ViewportDimensions {
+  width: number;
+  height: number;
 }
 
 export interface TextSelection {
@@ -42,6 +53,7 @@ export interface CanvasSlice {
   nodes: MindNode[];
   edges: Edge[];
   viewport: Viewport;
+  viewportDimensions: ViewportDimensions;
   selectedNodeId: string | null;
 
   // Actions
@@ -53,6 +65,7 @@ export interface CanvasSlice {
   setEdges: (edges: Edge[]) => void;
   setSelectedNode: (id: string | null) => void;
   setViewport: (viewport: Viewport) => void;
+  setViewportDimensions: (dimensions: ViewportDimensions) => void;
   resetCanvas: () => void;
 }
 
@@ -136,6 +149,11 @@ const DEFAULT_VIEWPORT: Viewport = {
   zoom: 1,
 };
 
+const DEFAULT_VIEWPORT_DIMENSIONS: ViewportDimensions = {
+  width: 1920,
+  height: 1080,
+};
+
 // ============================================
 // STORE IMPLEMENTATION
 // ============================================
@@ -148,6 +166,7 @@ export const useMindNodeStore = create<MindNodeStore>()(
     nodes: [],
     edges: [],
     viewport: DEFAULT_VIEWPORT,
+    viewportDimensions: DEFAULT_VIEWPORT_DIMENSIONS,
     selectedNodeId: null,
 
     // ========================================
@@ -305,6 +324,16 @@ export const useMindNodeStore = create<MindNodeStore>()(
     },
 
     /**
+     * Set viewport dimensions (width and height)
+     * Requirements: 13.4 - Track viewport size for culling
+     */
+    setViewportDimensions: (dimensions: ViewportDimensions) => {
+      set((state) => {
+        state.viewportDimensions = dimensions;
+      });
+    },
+
+    /**
      * Reset canvas to initial state
      */
     resetCanvas: () => {
@@ -312,6 +341,7 @@ export const useMindNodeStore = create<MindNodeStore>()(
         state.nodes = [];
         state.edges = [];
         state.viewport = DEFAULT_VIEWPORT;
+        state.viewportDimensions = DEFAULT_VIEWPORT_DIMENSIONS;
         state.selectedNodeId = null;
       });
     },
@@ -614,11 +644,13 @@ export const useWorkspaces = () => useMindNodeStore((state) => state.workspaces)
  * Select text selection state
  */
 export const useTextSelection = () =>
-  useMindNodeStore((state) => ({
-    selectedText: state.selectedText,
-    selectionPosition: state.selectionPosition,
-    selectionNodeId: state.selectionNodeId,
-  }));
+  useMindNodeStore(
+    useShallow((state) => ({
+      selectedText: state.selectedText,
+      selectionPosition: state.selectionPosition,
+      selectionNodeId: state.selectionNodeId,
+    }))
+  );
 
 /**
  * Get a specific node by ID
@@ -655,3 +687,204 @@ export const useManuallyPositionedNodes = () =>
  */
 export const useIsNodeManuallyPositioned = (nodeId: string) =>
   useMindNodeStore((state) => state.manuallyPositionedNodes.has(nodeId));
+
+/**
+ * Select viewport dimensions
+ */
+export const useViewportDimensions = () =>
+  useMindNodeStore((state) => state.viewportDimensions);
+
+/**
+ * Select visible nodes based on viewport culling
+ * Requirements: 13.4 - Only render visible nodes to optimize performance
+ * 
+ * This selector computes which nodes are visible in the current viewport
+ * and only triggers re-renders when the visible set changes.
+ */
+export const useVisibleNodes = (): MindNode[] =>
+  useMindNodeStore(
+    useShallow((state) => {
+      const { nodes, viewport, viewportDimensions } = state;
+      
+      // Calculate viewport bounds in canvas coordinates
+      const viewportBounds = calculateViewportBounds(
+        viewport.x,
+        viewport.y,
+        viewportDimensions.width,
+        viewportDimensions.height,
+        viewport.zoom
+      );
+      
+      // Filter to visible nodes with margin for smooth scrolling
+      return getVisibleNodes(nodes, viewportBounds, 150);
+    })
+  );
+
+/**
+ * Select visible node IDs for efficient comparison
+ * Requirements: 13.4 - Viewport culling optimization
+ */
+export const useVisibleNodeIds = (): Set<string> => {
+  const visibleNodes = useVisibleNodes();
+  return new Set(visibleNodes.map(n => n.id));
+};
+
+// ============================================
+// OPTIMIZED ACTION SELECTORS
+// Requirements: 13.1 - Efficient state subscriptions
+// ============================================
+
+/**
+ * Select only canvas actions (prevents re-render on state changes)
+ * Requirements: 13.1 - Efficient subscriptions
+ */
+export const useCanvasActions = () =>
+  useMindNodeStore(
+    useShallow((state) => ({
+      addNode: state.addNode,
+      updateNode: state.updateNode,
+      updateNodePosition: state.updateNodePosition,
+      deleteNode: state.deleteNode,
+      setNodes: state.setNodes,
+      setEdges: state.setEdges,
+      setSelectedNode: state.setSelectedNode,
+      setViewport: state.setViewport,
+      setViewportDimensions: state.setViewportDimensions,
+      resetCanvas: state.resetCanvas,
+    }))
+  );
+
+/**
+ * Select only AI actions
+ * Requirements: 13.1 - Efficient subscriptions
+ */
+export const useAIActions = () =>
+  useMindNodeStore(
+    useShallow((state) => ({
+      startGeneration: state.startGeneration,
+      stopGeneration: state.stopGeneration,
+      isGenerating: state.isGenerating,
+    }))
+  );
+
+/**
+ * Select only workspace actions
+ * Requirements: 13.1 - Efficient subscriptions
+ */
+export const useWorkspaceActions = () =>
+  useMindNodeStore(
+    useShallow((state) => ({
+      setCurrentWorkspace: state.setCurrentWorkspace,
+      setWorkspaces: state.setWorkspaces,
+      addWorkspace: state.addWorkspace,
+      updateWorkspace: state.updateWorkspace,
+      deleteWorkspace: state.deleteWorkspace,
+    }))
+  );
+
+/**
+ * Select only layout actions
+ * Requirements: 13.1 - Efficient subscriptions
+ */
+export const useLayoutActions = () =>
+  useMindNodeStore(
+    useShallow((state) => ({
+      markNodeAsManuallyPositioned: state.markNodeAsManuallyPositioned,
+      clearManuallyPositioned: state.clearManuallyPositioned,
+      clearAllManuallyPositioned: state.clearAllManuallyPositioned,
+      setLayoutDirection: state.setLayoutDirection,
+      applyLayout: state.applyLayout,
+      applyLayoutToDescendants: state.applyLayoutToDescendants,
+    }))
+  );
+
+/**
+ * Select only selection actions
+ * Requirements: 13.1 - Efficient subscriptions
+ */
+export const useSelectionActions = () =>
+  useMindNodeStore(
+    useShallow((state) => ({
+      setSelection: state.setSelection,
+      clearSelection: state.clearSelection,
+    }))
+  );
+
+// ============================================
+// MEMOIZED DERIVED STATE SELECTORS
+// Requirements: 13.1 - Memoize derived state
+// ============================================
+
+/**
+ * Get root node of current workspace
+ * Memoized to prevent unnecessary recalculations
+ */
+export const useRootNode = () =>
+  useMindNodeStore((state) => 
+    state.nodes.find(n => n.type === 'root')
+  );
+
+/**
+ * Get node count for performance monitoring
+ */
+export const useNodeCount = () =>
+  useMindNodeStore((state) => state.nodes.length);
+
+/**
+ * Get edge count for performance monitoring
+ */
+export const useEdgeCount = () =>
+  useMindNodeStore((state) => state.edges.length);
+
+/**
+ * Check if canvas has any nodes
+ */
+export const useHasNodes = () =>
+  useMindNodeStore((state) => state.nodes.length > 0);
+
+/**
+ * Get selected node object (not just ID)
+ * Memoized to prevent unnecessary re-renders
+ */
+export const useSelectedNode = () =>
+  useMindNodeStore((state) => {
+    if (!state.selectedNodeId) return null;
+    return state.nodes.find(n => n.id === state.selectedNodeId) || null;
+  });
+
+/**
+ * Get ancestors of a node (path from root to node)
+ * Useful for context assembly
+ */
+export const useNodeAncestors = (nodeId: string): MindNode[] =>
+  useMindNodeStore((state) => {
+    const ancestors: MindNode[] = [];
+    let currentId: string | null = nodeId;
+    
+    while (currentId) {
+      const node = state.nodes.find(n => n.id === currentId);
+      if (!node) break;
+      ancestors.unshift(node);
+      currentId = node.parentId;
+    }
+    
+    return ancestors;
+  });
+
+/**
+ * Get descendants of a node (all children recursively)
+ */
+export const useNodeDescendants = (nodeId: string): MindNode[] =>
+  useMindNodeStore((state) => {
+    const descendants: MindNode[] = [];
+    const queue = [nodeId];
+    
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      const children = state.nodes.filter(n => n.parentId === currentId);
+      descendants.push(...children);
+      queue.push(...children.map(c => c.id));
+    }
+    
+    return descendants;
+  });

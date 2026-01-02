@@ -11,6 +11,7 @@
  * - 4.1: Display Floating_Toolbar near text selection
  * - 4.2: Create child node with selected text as context
  * - 4.3: Store selected text in node's selectionSource field
+ * - 13.4: Only render visible nodes to optimize performance
  */
 
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
@@ -36,7 +37,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { MindNode, Edge, createEdgeFromNodes } from '../types';
-import { useMindNodeStore } from '../store';
+import { useMindNodeStore, useVisibleNodes } from '../store';
 import { NODE_WIDTH, NODE_HEIGHT } from '../lib/layout';
 import MindNodeComponent from './MindNodeComponent';
 import SelectionToolbar from './SelectionToolbar';
@@ -142,6 +143,7 @@ function CanvasWorkspaceInner({
     setNodes: setStoreNodes,
     setEdges: setStoreEdges,
     setViewport: setStoreViewport,
+    setViewportDimensions,
     setSelectedNode,
     addNode,
     updateNode,
@@ -150,6 +152,10 @@ function CanvasWorkspaceInner({
     applyLayout,
     startGeneration,
   } = useMindNodeStore();
+
+  // Get visible nodes for viewport culling
+  // Requirements: 13.4 - Only render visible nodes to optimize performance
+  const visibleNodes = useVisibleNodes();
 
   // Text selection hook for floating toolbar
   // Requirements: 4.1 - Detect text selection within nodes
@@ -180,14 +186,24 @@ function CanvasWorkspaceInner({
   });
 
   // Convert store nodes/edges to React Flow format
+  // Use visible nodes for rendering (viewport culling)
+  // Requirements: 13.4 - Only render visible nodes to optimize performance
   const rfNodes = useMemo(
-    () => storeNodes.map(toReactFlowNode),
-    [storeNodes]
+    () => visibleNodes.map(toReactFlowNode),
+    [visibleNodes]
+  );
+  
+  // Filter edges to only include those connecting visible nodes
+  const visibleNodeIds = useMemo(
+    () => new Set(visibleNodes.map(n => n.id)),
+    [visibleNodes]
   );
   
   const rfEdges = useMemo(
-    () => storeEdges.map(toReactFlowEdge),
-    [storeEdges]
+    () => storeEdges
+      .filter(edge => visibleNodeIds.has(edge.source) || visibleNodeIds.has(edge.target))
+      .map(toReactFlowEdge),
+    [storeEdges, visibleNodeIds]
   );
 
   // React Flow state
@@ -472,6 +488,30 @@ function CanvasWorkspaceInner({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Track viewport dimensions for culling
+  // Requirements: 13.4 - Track viewport size for culling optimization
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateDimensions = () => {
+      const rect = container.getBoundingClientRect();
+      setViewportDimensions({
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+
+    // Initial update
+    updateDimensions();
+
+    // Use ResizeObserver for efficient dimension tracking
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, [setViewportDimensions]);
 
   // Handle retry events from nodes
   // Requirements: 3.5, 15.1 - Error handling with retry

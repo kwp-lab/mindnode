@@ -6,14 +6,25 @@
  * 
  * Requirements:
  * - 3.3: Stream AI output in real-time to the node
+ * - 13.2: Optimize AI streaming with chunked updates
  */
 
 'use client';
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useMindNodeStore } from '../store';
 import { assembleContextFromArray } from '../lib/context';
 import { AIError } from '../types';
+
+// ============================================
+// CONSTANTS
+// ============================================
+
+/** Interval for chunked UI updates (ms) */
+const CHUNK_UPDATE_INTERVAL = 50;
+
+/** Maximum pending content length before applying backpressure */
+const BACKPRESSURE_THRESHOLD = 5000;
 
 // ============================================
 // TYPES
@@ -33,6 +44,8 @@ export interface UseAIGenerationReturn {
   generate: (nodeId: string, selectionSource?: string, userMessage?: string) => Promise<void>;
   /** Stop ongoing generation for a node */
   stop: (nodeId: string) => void;
+  /** Cancel all in-flight requests (useful for navigation) */
+  cancelAll: () => void;
   /** Check if a specific node is generating */
   isGenerating: (nodeId: string) => boolean;
   /** Get error for a specific node */
@@ -101,6 +114,7 @@ function parseError(error: unknown): AIError {
  * 
  * Requirements:
  * - 3.3: Stream AI output in real-time to the node
+ * - 13.2: Optimize AI streaming with chunked updates
  */
 export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGenerationReturn {
   const { onStart, onComplete, onError } = options;
@@ -122,6 +136,78 @@ export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGene
   
   // Track last request params for retry
   const lastRequestParams = useRef<Map<string, { selectionSource?: string; userMessage?: string }>>(new Map());
+
+  // Track pending content updates for chunked rendering
+  // Requirements: 13.2 - Chunk token updates
+  const pendingContent = useRef<Map<string, string>>(new Map());
+  const updateTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  /**
+   * Flush pending content to the node
+   * Requirements: 13.2 - Chunked updates for performance
+   */
+  const flushPendingContent = useCallback((nodeId: string) => {
+    const content = pendingContent.current.get(nodeId);
+    if (content !== undefined) {
+      updateNode(nodeId, {
+        label: content,
+        contextContent: content,
+      });
+    }
+  }, [updateNode]);
+
+  /**
+   * Schedule a chunked update for a node
+   * Requirements: 13.2 - Chunk token updates (every 50ms)
+   */
+  const scheduleUpdate = useCallback((nodeId: string, content: string) => {
+    // Store the latest content
+    pendingContent.current.set(nodeId, content);
+    
+    // If no timer is running, start one
+    if (!updateTimers.current.has(nodeId)) {
+      const timer = setTimeout(() => {
+        flushPendingContent(nodeId);
+        updateTimers.current.delete(nodeId);
+      }, CHUNK_UPDATE_INTERVAL);
+      
+      updateTimers.current.set(nodeId, timer);
+    }
+  }, [flushPendingContent]);
+
+  /**
+   * Clear all timers and pending content for a node
+   */
+  const clearNodeTimers = useCallback((nodeId: string) => {
+    const timer = updateTimers.current.get(nodeId);
+    if (timer) {
+      clearTimeout(timer);
+      updateTimers.current.delete(nodeId);
+    }
+    pendingContent.current.delete(nodeId);
+  }, []);
+
+  /**
+   * Cancel all in-flight requests
+   * Requirements: 13.2 - Cancel in-flight requests on navigation
+   */
+  const cancelAllRequests = useCallback(() => {
+    // Abort all controllers
+    abortControllers.current.forEach((controller, nodeId) => {
+      controller.abort();
+      clearNodeTimers(nodeId);
+      stopGeneration(nodeId);
+    });
+    abortControllers.current.clear();
+  }, [clearNodeTimers, stopGeneration]);
+
+  // Cleanup on unmount - cancel all requests
+  // Requirements: 13.2 - Cancel in-flight requests on navigation
+  useEffect(() => {
+    return () => {
+      cancelAllRequests();
+    };
+  }, [cancelAllRequests]);
 
   /**
    * Generate AI response for a node
@@ -185,6 +271,7 @@ export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGene
       
       const decoder = new TextDecoder();
       let content = '';
+      let lastUpdateTime = Date.now();
       
       // Read stream chunks
       while (true) {
@@ -198,13 +285,37 @@ export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGene
         const chunk = decoder.decode(value, { stream: true });
         content += chunk;
         
-        // Update node content in real-time
-        // Requirements: 3.3 - Stream output in real-time
-        updateNode(nodeId, {
-          label: content,
-          contextContent: content,
-        });
+        // Implement backpressure handling
+        // Requirements: 13.2 - Implement backpressure handling
+        const pendingLength = content.length - (pendingContent.current.get(nodeId)?.length || 0);
+        if (pendingLength > BACKPRESSURE_THRESHOLD) {
+          // Force immediate update if too much content is pending
+          flushPendingContent(nodeId);
+          clearNodeTimers(nodeId);
+        }
+        
+        // Schedule chunked update
+        // Requirements: 13.2 - Chunk token updates (every 50ms)
+        const now = Date.now();
+        if (now - lastUpdateTime >= CHUNK_UPDATE_INTERVAL) {
+          // Enough time has passed, update immediately
+          updateNode(nodeId, {
+            label: content,
+            contextContent: content,
+          });
+          lastUpdateTime = now;
+        } else {
+          // Schedule update for later
+          scheduleUpdate(nodeId, content);
+        }
       }
+      
+      // Final flush of any pending content
+      clearNodeTimers(nodeId);
+      updateNode(nodeId, {
+        label: content,
+        contextContent: content,
+      });
       
       // Generation complete
       stopGeneration(nodeId);
@@ -212,6 +323,9 @@ export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGene
       onComplete?.(nodeId, content);
       
     } catch (error) {
+      // Clean up timers
+      clearNodeTimers(nodeId);
+      
       // Handle abort (user cancelled)
       if (error instanceof Error && error.name === 'AbortError') {
         stopGeneration(nodeId);
@@ -236,19 +350,22 @@ export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGene
       abortControllers.current.delete(nodeId);
       onError?.(nodeId, aiError);
     }
-  }, [nodes, updateNode, startGeneration, stopGeneration, onStart, onComplete, onError]);
+  }, [nodes, updateNode, startGeneration, stopGeneration, onStart, onComplete, onError, scheduleUpdate, flushPendingContent, clearNodeTimers]);
 
   /**
    * Stop ongoing generation for a node
    */
   const stop = useCallback((nodeId: string) => {
+    // Clear any pending updates
+    clearNodeTimers(nodeId);
+    
     const controller = abortControllers.current.get(nodeId);
     if (controller) {
       controller.abort();
       abortControllers.current.delete(nodeId);
     }
     stopGeneration(nodeId);
-  }, [stopGeneration]);
+  }, [stopGeneration, clearNodeTimers]);
 
   /**
    * Check if a specific node is generating
@@ -291,6 +408,7 @@ export function useAIGeneration(options: UseAIGenerationOptions = {}): UseAIGene
   return {
     generate,
     stop,
+    cancelAll: cancelAllRequests,
     isGenerating,
     getError,
     clearError,
