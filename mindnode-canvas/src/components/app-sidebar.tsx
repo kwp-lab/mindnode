@@ -1,28 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { WorkspaceSwitcher } from "@/components/workspace-switcher"
 import { NavProjects } from "@/components/nav-projects"
+import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Workspace, Project } from "@/types"
-import { createBrowserClient } from "@supabase/ssr"
 
 interface User {
   id: string
   email?: string
   name?: string
+  avatar?: string
 }
 
 export function AppSidebar({ 
@@ -53,21 +50,6 @@ export function AppSidebar({
   onProjectRename?: (projectId: string, newTitle: string) => void
   user: User | null
 }) {
-  const router = useRouter()
-
-  const handleLogout = async () => {
-    try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      await supabase.auth.signOut()
-      router.push('/login')
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
-  }
-
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -91,23 +73,9 @@ export function AppSidebar({
       </SidebarContent>
       
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              onClick={handleLogout}
-              className="hover:bg-red-50 hover:text-red-600"
-            >
-              <LogOut className="size-4" />
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {user?.name || user?.email || 'User'}
-                </span>
-                <span className="truncate text-xs">Sign out</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {user && (
+          <NavUser user={user} />
+        )}
       </SidebarFooter>
       
       <SidebarRail />
