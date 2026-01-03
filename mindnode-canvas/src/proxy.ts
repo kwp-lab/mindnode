@@ -1,7 +1,7 @@
 /**
- * Next.js Middleware for authentication
+ * Next.js Proxy for authentication
  * 
- * This middleware:
+ * This proxy:
  * - Refreshes Supabase auth sessions on every request
  * - Redirects unauthenticated users to login page
  * - Protects authenticated routes
@@ -14,7 +14,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
