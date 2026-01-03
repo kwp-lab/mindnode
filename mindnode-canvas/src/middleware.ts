@@ -48,9 +48,9 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protected routes - require authentication
-  const protectedPaths = ['/', '/workspace'];
+  const protectedPaths = ['/ws'];
   const isProtectedPath = protectedPaths.some(path => 
-    request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path + '/')
+    request.nextUrl.pathname.startsWith(path)
   );
 
   // Public routes - accessible without authentication
@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users away from auth pages
   if (user && isPublicPath && request.nextUrl.pathname !== '/auth/callback') {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/';  // Redirect to root page, which will handle workspace routing
     return NextResponse.redirect(url);
   }
 

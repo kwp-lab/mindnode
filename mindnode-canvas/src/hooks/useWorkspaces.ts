@@ -48,6 +48,10 @@ export interface UseWorkspacesReturn {
   deleteWorkspace: (workspaceId: string) => Promise<boolean>;
   /** Update workspace viewport state */
   saveViewportState: () => Promise<void>;
+  /** Get last active workspace from localStorage */
+  getLastActiveWorkspace: () => Workspace | null;
+  /** Set last active workspace in localStorage */
+  setLastActiveWorkspace: (workspaceId: string) => void;
 }
 
 // ============================================
@@ -329,6 +333,36 @@ export function useWorkspaces({
     }
   }, [currentWorkspaceId, viewport]);
 
+  /**
+   * Get last active workspace from localStorage
+   */
+  const getLastActiveWorkspace = useCallback((): Workspace | null => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const lastActiveId = localStorage.getItem('lastActiveWorkspaceId');
+      if (!lastActiveId) return null;
+      
+      return workspaces.find(ws => ws.id === lastActiveId) || null;
+    } catch (err) {
+      console.warn('Failed to get last active workspace:', err);
+      return null;
+    }
+  }, [workspaces]);
+
+  /**
+   * Set last active workspace in localStorage
+   */
+  const setLastActiveWorkspace = useCallback((workspaceId: string) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.setItem('lastActiveWorkspaceId', workspaceId);
+    } catch (err) {
+      console.warn('Failed to set last active workspace:', err);
+    }
+  }, []);
+
   // Auto-load workspaces on mount
   useEffect(() => {
     if (autoLoad && userId) {
@@ -347,6 +381,8 @@ export function useWorkspaces({
     createWorkspace,
     deleteWorkspace,
     saveViewportState,
+    getLastActiveWorkspace,
+    setLastActiveWorkspace,
   };
 }
 
