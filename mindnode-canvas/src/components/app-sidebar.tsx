@@ -2,8 +2,10 @@
 
 import * as React from "react"
 import { LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { WorkspaceSwitcher } from "@/components/workspace-switcher"
+import { NavProjects } from "@/components/nav-projects"
 import {
   Sidebar,
   SidebarContent,
@@ -14,11 +16,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Workspace } from "@/types"
+import { Workspace, Project } from "@/types"
+import { createBrowserClient } from "@supabase/ssr"
 
 interface User {
   id: string
-  email: string
+  email?: string
   name?: string
 }
 
@@ -28,6 +31,12 @@ export function AppSidebar({
   onWorkspaceSelect,
   onWorkspaceCreate,
   onWorkspaceDelete,
+  projects,
+  currentProjectId,
+  onProjectSelect,
+  onProjectCreate,
+  onProjectDelete,
+  onProjectRename,
   user,
   ...props 
 }: React.ComponentProps<typeof Sidebar> & {
@@ -36,11 +45,27 @@ export function AppSidebar({
   onWorkspaceSelect: (workspaceId: string) => void
   onWorkspaceCreate: (title: string) => void
   onWorkspaceDelete: (workspaceId: string) => void
+  projects: Project[]
+  currentProjectId: string | null
+  onProjectSelect: (projectId: string) => void
+  onProjectCreate: (title: string) => void
+  onProjectDelete: (projectId: string) => void
+  onProjectRename?: (projectId: string, newTitle: string) => void
   user: User | null
 }) {
+  const router = useRouter()
+
   const handleLogout = async () => {
-    // TODO: Implement logout logic
-    console.log('Logout clicked')
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+      await supabase.auth.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
@@ -55,10 +80,14 @@ export function AppSidebar({
       </SidebarHeader>
       
       <SidebarContent>
-        {/* Projects will be added here later */}
-        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-          Projects coming soon...
-        </div>
+        <NavProjects
+          projects={projects}
+          currentProjectId={currentProjectId}
+          onProjectSelect={onProjectSelect}
+          onProjectCreate={onProjectCreate}
+          onProjectDelete={onProjectDelete}
+          onProjectRename={onProjectRename}
+        />
       </SidebarContent>
       
       <SidebarFooter>

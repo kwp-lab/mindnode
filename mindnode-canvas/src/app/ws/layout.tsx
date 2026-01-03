@@ -12,6 +12,7 @@
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useWorkspaces } from '@/hooks/useWorkspaces';
+import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -35,6 +36,19 @@ export default function WorkspaceLayout({
     autoLoad: !!user?.id,
   });
 
+  const {
+    projects,
+    currentProjectId,
+    isLoading: isProjectsLoading,
+    createProject,
+    deleteProject,
+    updateProject,
+    setCurrentProjectId,
+  } = useProjects({
+    workspaceId: currentWorkspaceId,
+    autoLoad: !!currentWorkspaceId,
+  });
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthLoading && !user) {
@@ -56,6 +70,29 @@ export default function WorkspaceLayout({
     return null;
   }
 
+  const handleProjectSelect = (projectId: string) => {
+    setCurrentProjectId(projectId);
+  };
+
+  const handleProjectCreate = async (title: string) => {
+    const project = await createProject(title);
+    if (project) {
+      router.push(`/ws/canvas/${project.id}`);
+    }
+  };
+
+  const handleProjectDelete = async (projectId: string) => {
+    await deleteProject(projectId);
+    // If we deleted the current project, go back to dashboard
+    if (projectId === currentProjectId) {
+      router.push('/ws/dashboard');
+    }
+  };
+
+  const handleProjectRename = async (projectId: string, newTitle: string) => {
+    await updateProject(projectId, { title: newTitle });
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -65,6 +102,14 @@ export default function WorkspaceLayout({
         onWorkspaceSelect={switchWorkspace}
         onWorkspaceCreate={createWorkspace}
         onWorkspaceDelete={deleteWorkspace}
+        
+        // project props
+        projects={projects}
+        currentProjectId={currentProjectId}
+        onProjectSelect={handleProjectSelect}
+        onProjectCreate={handleProjectCreate}
+        onProjectDelete={handleProjectDelete}
+        onProjectRename={handleProjectRename}
         
         // user props
         user={user}

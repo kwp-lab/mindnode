@@ -27,6 +27,12 @@ export type {
   UseWorkspacesReturn,
 } from './useWorkspaces';
 
+export { useProjects } from './useProjects';
+export type {
+  UseProjectsOptions,
+  UseProjectsReturn,
+} from './useProjects';
+
 export { useNetworkStatus } from './useNetworkStatus';
 export type { NetworkStatus } from './useNetworkStatus';
 

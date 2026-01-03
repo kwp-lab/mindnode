@@ -18,11 +18,27 @@ export interface Workspace {
   };
 }
 
+export interface Project {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description: string | null;
+  rootNodeId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  viewport: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
+}
+
 export type NodeType = 'root' | 'user' | 'ai';
 
 export interface MindNode {
   id: string;
   workspaceId: string;
+  projectId: string | null;
   parentId: string | null;
   type: NodeType;
   data: {
