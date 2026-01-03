@@ -9,7 +9,7 @@
  * - Breadcrumb navigation
  */
 
-import { use } from 'react';
+import { use, useEffect } from 'react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -20,8 +20,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { CanvasWorkspace } from '@/components/CanvasWorkspace';
+import CanvasWorkspace from '@/components/CanvasWorkspace';
 import { useMindNodeStore } from '@/store';
+import { useProjects } from '@/hooks/useProjects';
 
 interface CanvasPageProps {
   params: Promise<{ projectId: string }>;
@@ -29,11 +30,25 @@ interface CanvasPageProps {
 
 export default function CanvasPage({ params }: CanvasPageProps) {
   const { projectId } = use(params);
-  const { currentWorkspaceId } = useMindNodeStore();
+  const currentWorkspaceId = useMindNodeStore((state) => state.currentWorkspaceId);
+  const setCurrentProject = useMindNodeStore((state) => state.setCurrentProject);
+  
+  const { projects, setCurrentProjectId } = useProjects({
+    workspaceId: currentWorkspaceId,
+    autoLoad: !!currentWorkspaceId,
+  });
 
-  // TODO: Add project loading and validation
-  // TODO: Add project name to breadcrumb
-  const projectName = "Untitled Project"; // Placeholder
+  // Find current project
+  const currentProject = projects.find(p => p.id === projectId);
+  const projectName = currentProject?.title || "Loading...";
+
+  // Set current project in store when page loads
+  useEffect(() => {
+    if (projectId) {
+      setCurrentProject(projectId);
+      setCurrentProjectId(projectId);
+    }
+  }, [projectId, setCurrentProject, setCurrentProjectId]);
 
   return (
     <>

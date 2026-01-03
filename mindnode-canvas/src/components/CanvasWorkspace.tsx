@@ -49,6 +49,7 @@ import { useTextSelection, useAIGeneration } from '../hooks';
 
 export interface CanvasWorkspaceProps {
   workspaceId: string;
+  projectId?: string;
   initialNodes?: MindNode[];
   initialEdges?: Edge[];
   onNodesChange?: (nodes: MindNode[]) => void;
@@ -126,6 +127,7 @@ function toReactFlowEdge(edge: Edge): ReactFlowEdge {
 
 function CanvasWorkspaceInner({
   workspaceId,
+  projectId,
   initialNodes = [],
   initialEdges = [],
   onNodesChange: onNodesChangeCallback,
@@ -140,11 +142,13 @@ function CanvasWorkspaceInner({
     edges: storeEdges,
     viewport: storeViewport,
     selectedNodeId,
+    currentProjectId,
     setNodes: setStoreNodes,
     setEdges: setStoreEdges,
     setViewport: setStoreViewport,
     setViewportDimensions,
     setSelectedNode,
+    setCurrentProject,
     addNode,
     updateNode,
     updateNodePosition,
@@ -184,6 +188,51 @@ function CanvasWorkspaceInner({
       });
     },
   });
+
+  // Load project data when projectId changes
+  useEffect(() => {
+    if (projectId && projectId !== currentProjectId) {
+      loadProjectData(projectId);
+    }
+  }, [projectId, currentProjectId]);
+
+  // Function to load project data from API
+  const loadProjectData = async (projId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projId}`);
+      if (!response.ok) {
+        throw new Error('Failed to load project');
+      }
+      
+      const data = await response.json();
+      
+      // Transform nodes from API format
+      const transformedNodes: MindNode[] = data.nodes.map((n: MindNode & { createdAt: string; updatedAt: string }) => ({
+        ...n,
+        createdAt: new Date(n.createdAt),
+        updatedAt: new Date(n.updatedAt),
+      }));
+      
+      // Set nodes in store
+      setStoreNodes(transformedNodes);
+      
+      // Set viewport from project
+      if (data.project.viewport) {
+        setStoreViewport(data.project.viewport);
+        if (reactFlowInstance) {
+          reactFlowInstance.setViewport(data.project.viewport);
+        }
+      }
+      
+      // Update current project in store
+      setCurrentProject(projId);
+      
+      // Apply layout after loading
+      setTimeout(() => applyLayout(), 100);
+    } catch (error) {
+      console.error('Error loading project data:', error);
+    }
+  };
 
   // Convert store nodes/edges to React Flow format
   // Use visible nodes for rendering (viewport culling)
@@ -314,6 +363,7 @@ function CanvasWorkspaceInner({
       const newNode: MindNode = {
         id: `node-${Date.now()}`,
         workspaceId,
+        projectId: projectId || null,
         parentId,
         type: 'user',
         data: {
@@ -335,7 +385,7 @@ function CanvasWorkspaceInner({
       // Apply layout after adding node
       setTimeout(() => applyLayout(), 0);
     },
-    [storeNodes, workspaceId, addNode, setSelectedNode, applyLayout]
+    [storeNodes, workspaceId, projectId, addNode, setSelectedNode, applyLayout]
   );
 
   /**
@@ -353,6 +403,7 @@ function CanvasWorkspaceInner({
       const newNode: MindNode = {
         id: `node-${Date.now()}`,
         workspaceId,
+        projectId: projectId || null,
         parentId: currentNode.parentId,
         type: 'user',
         data: {
@@ -374,7 +425,7 @@ function CanvasWorkspaceInner({
       // Apply layout after adding node
       setTimeout(() => applyLayout(), 0);
     },
-    [storeNodes, workspaceId, addNode, setSelectedNode, applyLayout]
+    [storeNodes, workspaceId, projectId, addNode, setSelectedNode, applyLayout]
   );
 
   /**
@@ -396,6 +447,7 @@ function CanvasWorkspaceInner({
       const newNode: MindNode = {
         id: `node-${Date.now()}`,
         workspaceId,
+        projectId: projectId || null,
         parentId: selection.nodeId,
         type: 'ai', // AI node since it will trigger AI generation
         data: {
@@ -435,7 +487,7 @@ function CanvasWorkspaceInner({
         generateAI(newNode.id, selectedText);
       }, 100);
     },
-    [selection, storeNodes, workspaceId, addNode, setSelectedNode, startGeneration, clearSelection, applyLayout, generateAI]
+    [selection, storeNodes, workspaceId, projectId, addNode, setSelectedNode, startGeneration, clearSelection, applyLayout, generateAI]
   );
 
   /**

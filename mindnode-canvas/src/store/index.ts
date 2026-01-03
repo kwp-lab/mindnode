@@ -105,10 +105,12 @@ export interface SelectionSlice {
 export interface WorkspaceSlice {
   // State
   currentWorkspaceId: string | null;
+  currentProjectId: string | null;
   workspaces: Workspace[];
 
   // Actions
   setCurrentWorkspace: (id: string | null) => void;
+  setCurrentProject: (id: string | null) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
   addWorkspace: (workspace: Workspace) => void;
   updateWorkspace: (id: string, data: Partial<Workspace>) => void;
@@ -433,6 +435,7 @@ export const useMindNodeStore = create<MindNodeStore>()(
     // WORKSPACE SLICE STATE
     // ========================================
     currentWorkspaceId: null,
+    currentProjectId: null,
     workspaces: [],
 
     // ========================================
@@ -446,6 +449,17 @@ export const useMindNodeStore = create<MindNodeStore>()(
     setCurrentWorkspace: (id: string | null) => {
       set((state) => {
         state.currentWorkspaceId = id;
+        // Clear project when workspace changes
+        state.currentProjectId = null;
+      });
+    },
+
+    /**
+     * Set the current active project
+     */
+    setCurrentProject: (id: string | null) => {
+      set((state) => {
+        state.currentProjectId = id;
       });
     },
 
@@ -636,6 +650,11 @@ export const useSelectedNodeId = () => useMindNodeStore((state) => state.selecte
 export const useCurrentWorkspaceId = () => useMindNodeStore((state) => state.currentWorkspaceId);
 
 /**
+ * Select current project ID
+ */
+export const useCurrentProjectId = () => useMindNodeStore((state) => state.currentProjectId);
+
+/**
  * Select all workspaces
  */
 export const useWorkspaces = () => useMindNodeStore((state) => state.workspaces);
@@ -775,6 +794,7 @@ export const useWorkspaceActions = () =>
   useMindNodeStore(
     useShallow((state) => ({
       setCurrentWorkspace: state.setCurrentWorkspace,
+      setCurrentProject: state.setCurrentProject,
       setWorkspaces: state.setWorkspaces,
       addWorkspace: state.addWorkspace,
       updateWorkspace: state.updateWorkspace,
