@@ -1,13 +1,13 @@
 {
   "mcpServers": {
-    "ai-elements": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://registry.ai-sdk.dev/api/mcp"
-      ]
-    },
+    // "ai-elements": {
+    //   "command": "npx",
+    //   "args": [
+    //     "-y",
+    //     "mcp-remote",
+    //     "https://registry.ai-sdk.dev/api/mcp"
+    //   ]
+    // },
     "Context7": {
       "command": "npx",
       "args": [

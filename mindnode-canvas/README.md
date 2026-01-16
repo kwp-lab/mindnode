@@ -31,8 +31,9 @@
 ### 1. 环境要求
 
 - Node.js 18+ 
-- npm 或 yarn
-- Supabase 账号
+- pnpm (推荐) 或 npm/yarn
+- Docker 和 Docker Compose (用于本地 Supabase)
+- Supabase CLI
 - OpenAI API Key
 
 ### 2. 克隆项目
@@ -45,17 +46,46 @@ cd mindnode-canvas
 ### 3. 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
-### 4. 配置环境变量
+### 4. 安装 Supabase CLI
+
+```bash
+# macOS/Linux
+brew install supabase/tap/supabase
+
+# 或使用 npm
+npm install -g supabase
+
+# 验证安装
+supabase --version
+```
+
+### 5. 启动本地 Supabase
+
+```bash
+# 启动本地 Supabase (包含 PostgreSQL, Auth, Storage 等)
+supabase start
+
+# 等待服务启动完成，会显示以下信息：
+# API URL: http://localhost:54321
+# DB URL: postgresql://postgres:postgres@localhost:54322/postgres
+# Studio URL: http://localhost:54323
+# anon key: eyJhbGc...
+# service_role key: eyJhbGc...
+```
+
+启动成功后，记下显示的 `API URL` 和 `anon key`。
+
+### 6. 配置环境变量
 
 创建 `.env.local` 文件（参考 `.env.local.example`）：
 
 ```bash
-# Supabase 配置
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# 本地 Supabase 配置
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<从 supabase start 输出中复制 anon key>
 
 # OpenAI 配置
 OPENAI_API_KEY=sk-your-openai-api-key
@@ -64,14 +94,6 @@ OPENAI_API_KEY=sk-your-openai-api-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-#### 获取 Supabase 配置
-
-1. 访问 [Supabase](https://supabase.com) 并创建新项目
-2. 进入项目设置 > API
-3. 复制以下信息：
-   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-   - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
 #### 获取 OpenAI API Key
 
 1. 访问 [OpenAI Platform](https://platform.openai.com)
@@ -79,54 +101,50 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 3. 创建新的 API Key
 4. 复制 key → `OPENAI_API_KEY`
 
-### 5. 设置数据库
+### 7. 应用数据库迁移
 
-#### 方法 1: 使用 Supabase Dashboard (推荐)
+数据库迁移文件已经在 `supabase/migrations/` 目录中，启动本地 Supabase 时会自动应用。
 
-1. 进入 Supabase 项目的 SQL Editor
-2. 依次运行以下迁移文件：
-
-**第一步：创建表和 RLS 策略**
-```sql
--- 复制 supabase/migrations/20241227000001_create_workspaces_and_nodes.sql 的内容
--- 粘贴到 SQL Editor 并执行
-```
-
-**第二步：配置认证**
-```sql
--- 复制 supabase/migrations/20241228000001_configure_auth.sql 的内容
--- 粘贴到 SQL Editor 并执行
-```
-
-#### 方法 2: 使用 Supabase CLI
+如果需要手动应用或重置数据库：
 
 ```bash
-# 安装 Supabase CLI
-npm install -g supabase
+# 重置数据库（清空所有数据并重新应用迁移）
+supabase db reset
 
-# 登录
-supabase login
+# 查看迁移状态
+supabase migration list
 
-# 链接到你的项目
-supabase link --project-ref your-project-ref
-
-# 推送迁移
-supabase db push
+# 创建新的迁移（如果需要）
+supabase migration new your_migration_name
 ```
 
-### 6. 启动开发服务器
+你也可以通过 Supabase Studio 查看和管理数据库：
+- 访问 http://localhost:54323
+- 进入 SQL Editor 或 Table Editor
+
+### 8. 启动开发服务器
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 访问 [http://localhost:3000](http://localhost:3000) 查看应用。
 
-### 7. 创建账号并开始使用
+### 9. 创建账号并开始使用
 
 1. 访问 `/signup` 创建账号
 2. 登录后会自动创建默认工作区
 3. 开始创建节点和 AI 对话！
+
+### 10. 停止服务
+
+```bash
+# 停止本地 Supabase
+supabase stop
+
+# 停止并删除所有数据（谨慎使用）
+supabase stop --no-backup
+```
 
 ## 开发指南
 
@@ -171,19 +189,26 @@ mindnode-canvas/
 
 ```bash
 # 开发
-npm run dev          # 启动开发服务器
+pnpm dev             # 启动开发服务器
 
 # 构建
-npm run build        # 生产构建
-npm run start        # 启动生产服务器
+pnpm build           # 生产构建
+pnpm start           # 启动生产服务器
 
 # 测试
-npm test             # 运行所有测试
-npm run test:watch   # 监听模式运行测试
-npm run test:coverage # 生成测试覆盖率报告
+pnpm test            # 运行所有测试
+pnpm test:watch      # 监听模式运行测试
+pnpm test:coverage   # 生成测试覆盖率报告
 
 # 代码质量
-npm run lint         # 运行 ESLint
+pnpm lint            # 运行 ESLint
+
+# Supabase
+supabase start       # 启动本地 Supabase
+supabase stop        # 停止本地 Supabase
+supabase status      # 查看服务状态
+supabase db reset    # 重置数据库
+supabase migration list  # 查看迁移状态
 ```
 
 ### 运行测试
@@ -192,13 +217,13 @@ npm run lint         # 运行 ESLint
 
 ```bash
 # 运行所有测试
-npm test
+pnpm test
 
 # 监听模式（开发时使用）
-npm run test:watch
+pnpm test:watch
 
 # 查看测试覆盖率
-npm run test:coverage
+pnpm test:coverage
 ```
 
 测试文件：
@@ -262,23 +287,70 @@ npm run test:coverage
 
 确保 `.env.local` 文件存在且包含正确的 Supabase 配置。修改后需要重启开发服务器。
 
-### 2. AI 响应失败
+### 2. Supabase 服务无法启动
+
+```bash
+# 检查 Docker 是否运行
+docker ps
+
+# 查看 Supabase 状态
+supabase status
+
+# 查看详细日志
+supabase start --debug
+
+# 如果端口被占用，可以停止并重启
+supabase stop
+supabase start
+```
+
+### 3. AI 响应失败
 
 - 检查 `OPENAI_API_KEY` 是否正确
 - 确认 OpenAI 账户有足够的额度
 - 查看浏览器控制台的错误信息
 
-### 3. 数据库连接失败
+### 4. 数据库连接失败
 
-- 确认 Supabase 项目 URL 和 Key 正确
-- 检查数据库迁移是否已执行
+- 确认本地 Supabase 已启动 (`supabase status`)
+- 检查 `.env.local` 中的 URL 是否为 `http://localhost:54321`
+- 运行 `supabase db reset` 重新应用迁移
 - 验证 RLS 策略是否正确配置
 
-### 4. OAuth 登录失败
+### 5. 数据库迁移问题
 
-- 确认 OAuth 提供商的回调 URL 配置正确
-- 检查 Supabase Dashboard 中 OAuth 提供商是否已启用
+```bash
+# 查看迁移状态
+supabase migration list
+
+# 重置数据库（会清空所有数据）
+supabase db reset
+
+# 手动应用特定迁移
+supabase migration up
+```
+
+### 6. OAuth 登录失败（本地开发）
+
+本地开发环境的 OAuth 配置需要额外设置：
+- 在 OAuth 提供商中添加 `http://localhost:54321/auth/v1/callback` 作为回调 URL
+- 在 Supabase Studio (http://localhost:54323) 的 Authentication > Providers 中配置
 - 查看浏览器控制台的错误信息
+
+### 7. 端口冲突
+
+如果默认端口被占用，可以修改 `supabase/config.toml` 中的端口配置：
+
+```toml
+[api]
+port = 54321  # API 端口
+
+[db]
+port = 54322  # PostgreSQL 端口
+
+[studio]
+port = 54323  # Studio 端口
+```
 
 ## 性能优化
 
